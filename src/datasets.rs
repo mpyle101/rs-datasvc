@@ -10,13 +10,20 @@ use crate::datahub;
 const DATASET_QUERY: &str = "
     urn
     __typename
-    ... on Dataset { 
+    ... on Dataset {
         name
-        properties { 
+        properties {
             name
         }
+        schema: schemaMetadata {
+            fields {
+                path: fieldPath
+                class: type
+                native: nativeDataType
+            }
+        }
         sub_types: subTypes {
-            type_names: typeNames
+            names: typeNames
         }
         tags {
             tags {
@@ -38,13 +45,16 @@ pub struct Datasets {
 }
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Dataset {
     id: String,
-    name: String,
+    path: String,
+    name: Option<String>,
+
+    #[serde(rename(serialize = "type"))]
+    class: Option<String>,
+
     tags: Vec<Tag>,
-    sub_type: Option<String>,
-    short_name: Option<String>,
+    fields: Option<Vec<Field>>,
 }
 
 #[derive(Serialize)]
@@ -54,10 +64,42 @@ pub struct Tag {
 }
 
 #[derive(Serialize)]
+pub struct Field {
+    path: String,
+
+    #[serde(rename(serialize = "type"))]
+    class: String,
+
+    #[serde(rename(serialize = "nativeType"))]
+    native: String,
+}
+
+#[derive(Serialize)]
 pub struct Paging {
     total: i32,
     limit: i32,
     offset: i32,
+}
+
+impl Field {
+    fn from_dsfield(dsf: &DatasetField) -> Field
+    {
+        Field {
+            path: dsf.path.to_owned(),
+            class: dsf.class.to_owned(),
+            native: dsf.native.to_owned(),
+        }
+    }
+}
+
+impl Tag {
+    fn from_entity(entity: &datahub::TagEntity) -> Tag
+    {
+        Tag {
+            id: entity.tag.urn.to_owned(),
+            name: entity.tag.properties.name.to_owned(),
+        }
+    }
 }
 
 impl Dataset {
@@ -65,24 +107,26 @@ impl Dataset {
     {
         Dataset {
             id: entity.urn.to_owned(),
-            name: entity.name.to_owned(),
+            path: entity.name.to_owned(),
+            name: entity.properties.as_ref()
+                .map(|props| props.name.to_owned()),
+            class: entity.sub_types.as_ref()
+                .map(|st| st.names[0].to_owned()),
             tags: entity.tags.as_ref()
                 .map_or_else(Vec::new, |tags| tags.tags.iter()
-                    .map(|e| Tag {
-                        id: e.tag.urn.to_owned(),
-                        name: e.tag.properties.name.to_owned()
-                    })
+                    .map(Tag::from_entity)
                     .collect()
                 ),
-            sub_type: entity.sub_types.as_ref()
-                .map(|st| st.type_names[0].to_owned()),
-            short_name: entity.properties.as_ref()
-                .map(|props| props.name.to_owned()),
+            fields: entity.schema.as_ref()
+                .map(|schema| schema.fields.iter()
+                    .map(Field::from_dsfield)
+                    .collect()
+                ),
         }
     }
 }
 
-pub(crate) async fn by_id(resp: Response<Body>) -> Result<Dataset>
+pub async fn by_id(resp: Response<Body>) -> Result<Dataset>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
@@ -93,7 +137,7 @@ pub(crate) async fn by_id(resp: Response<Body>) -> Result<Dataset>
     Ok(Dataset::from_entity(&entity))
 }
 
-pub(crate) fn build_id_query(id: &str) -> String
+pub fn build_id_query(id: &str) -> String
 {
     let value = json!({
         "query": format!("{{ 
@@ -106,7 +150,7 @@ pub(crate) fn build_id_query(id: &str) -> String
     format!("{value}")
 }
 
-pub(crate) async fn by_query(resp: Response<Body>) -> Result<Datasets>
+pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
@@ -119,7 +163,7 @@ pub(crate) async fn by_query(resp: Response<Body>) -> Result<Datasets>
     Ok(Datasets { data, paging })
 }
 
-pub(crate) fn build_query(params: HashMap<&str, &str>) -> String
+pub fn build_query(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
@@ -249,13 +293,26 @@ struct DatasetEntity {
     urn: String,
     name: String,
     tags: Option<datahub::Tags>,
+    schema: Option<DatasetSchema>,
     sub_types: Option<DatasetSubType>,
     properties: Option<DatasetProperties>,
 }
 
 #[derive(Deserialize)]
+struct DatasetSchema {
+    fields: Vec<DatasetField>,
+}
+
+#[derive(Deserialize)]
+struct DatasetField {
+    path: String,
+    class: String,
+    native: String,
+}
+
+#[derive(Deserialize)]
 struct DatasetSubType {
-    type_names: Vec<String>
+    names: Vec<String>
 }
 
 #[derive(Deserialize)]

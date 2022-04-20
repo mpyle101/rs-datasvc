@@ -8,19 +8,19 @@ use serde_json::{Result, json};
 use crate::datahub;
 
 #[derive(Serialize)]
-pub(crate) struct Tags {
+pub struct Tags {
     data: Vec<Tag>,
     paging: Option<Paging>,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Tag {
+pub struct Tag {
     id: String,
     name: String,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Paging {
+pub struct Paging {
     total: i32,
     limit: i32,
     offset: i32,
@@ -36,7 +36,7 @@ impl Tag {
     }
 }
 
-pub(crate) async fn by_id(resp: Response<Body>) -> Result<Tag>
+pub async fn by_id(resp: Response<Body>) -> Result<Tag>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
@@ -46,7 +46,7 @@ pub(crate) async fn by_id(resp: Response<Body>) -> Result<Tag>
     Ok(Tag::from_entity(&body.data.tag))
 }
 
-pub(crate) fn build_id_query(id: &str) -> String
+pub fn build_id_query(id: &str) -> String
 {
     let value = json!({
         "query": format!("{{ 
@@ -62,7 +62,7 @@ pub(crate) fn build_id_query(id: &str) -> String
     format!("{value}")
 }
 
-pub(crate) async fn by_query(resp: Response<Body>) -> Result<Tags>
+pub async fn by_query(resp: Response<Body>) -> Result<Tags>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
@@ -75,7 +75,7 @@ pub(crate) async fn by_query(resp: Response<Body>) -> Result<Tags>
     Ok(Tags { data, paging })
 }
 
-pub(crate) fn build_query(params: HashMap<&str, &str>) -> String
+pub fn build_query(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
