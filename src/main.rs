@@ -105,7 +105,7 @@ async fn create_tag(
     Json(payload): Json<CreateTag>
 ) -> impl IntoResponse
 {
-    let desc = payload.description.unwrap_or("".to_string());
+    let desc = payload.description.unwrap_or_else(|| "".to_string());
     let body = tags::create_body(&payload.name, &desc);
     let req  = entities_request("ingest", body);
     let resp = client.request(req)
@@ -120,7 +120,7 @@ async fn create_tag(
     let name = payload.name;
     (status, Json(tags::Tag {
         id: format!("urn:li:tag:{name}"),
-        name: Some(name.to_owned()),
+        name: Some(name),
         description: Some(desc.to_owned()),
     }))
 }
