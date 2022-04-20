@@ -1,4 +1,5 @@
 mod datasets;
+mod datahub;
 mod tags;
 
 // Standard library
@@ -8,7 +9,7 @@ use std::net::SocketAddr;
 // Installed crates
 use axum::{
     Json,
-    extract::Extension,
+    extract::{Extension, Path},
     handler::Handler,
     http::{header, Method, Request, StatusCode, Uri},
     response::{Html, IntoResponse},
@@ -28,7 +29,9 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
     let app = axum::Router::new()
         .route("/", get(root))
         .route("/tags", get(tags_by_query))
+        .route("/tags/:id", get(tags_by_id))
         .route("/datasets", get(datasets_by_query))
+        .route("/datasets/:id", get(dataset_by_id))
         .layer(Extension(Client::new()))
         .fallback(not_found.into_service());
 
@@ -57,6 +60,23 @@ async fn root() -> Html<&'static str>
     "<h1>Alteryx Data Service is alive!</h1>".into()
 }
 
+async fn tags_by_id(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+) -> Json<tags::Tag>
+{
+    let query = tags::build_id_query(&id);
+    let req  = build_request(query);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = tags::by_id(resp)
+        .await
+        .unwrap();
+
+    results.into()
+}
+
 async fn tags_by_query(
     Extension(client): Extension<Client>,
     req: Request<Body>
@@ -76,6 +96,23 @@ async fn tags_by_query(
     results.into()
 }
 
+async fn dataset_by_id(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+) -> Json<datasets::Dataset>
+{
+    let query = datasets::build_id_query(&id);
+    let req  = build_request(query);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = datasets::by_id(resp)
+        .await
+        .unwrap();
+
+    results.into()
+}
+
 async fn datasets_by_query(
     Extension(client): Extension<Client>,
     req: Request<Body>
@@ -84,6 +121,7 @@ async fn datasets_by_query(
     let params: HashMap<_, _> = req.uri().query()
         .map_or_else(|| HashMap::new(), |s| parse_query(s));
     let query = datasets::build_query(params);
+    println!("{query}");
     let req  = build_request(query);
     let resp = client.request(req)
         .await

@@ -5,6 +5,8 @@ use hyper::Body;
 use serde::{Serialize, Deserialize};
 use serde_json::{Result, json};
 
+use crate::datahub;
+
 #[derive(Serialize)]
 pub(crate) struct Tags {
     data: Vec<Tag>,
@@ -22,6 +24,42 @@ pub(crate) struct Paging {
     total: i32,
     limit: i32,
     offset: i32,
+}
+
+impl Tag {
+    fn from_entity(entity: &datahub::TagEntity) -> Tag
+    {
+        Tag {
+            id: entity.tag.urn.to_owned(),
+             name: entity.tag.properties.name.to_owned(),
+        }
+    }
+}
+
+pub(crate) async fn by_id(resp: Response<Body>) -> Result<Tag>
+{
+    let bytes = hyper::body::to_bytes(resp.into_body())
+        .await
+        .unwrap();
+    let body: TagResponse = serde_json::from_slice(&bytes).unwrap();
+
+    Ok(Tag::from_entity(&body.data))
+}
+
+pub(crate) fn build_id_query(id: &str) -> String
+{
+    let value = json!({
+        "query": format!("{{ 
+            tag(urn: \"{id}\") {{
+                urn
+                properties {{ 
+                    name
+                }}
+            }}
+        }}")
+    });
+
+    format!("{value}")
 }
 
 pub(crate) async fn by_query(resp: Response<Body>) -> Result<Tags>
@@ -62,7 +100,8 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                 __typename
                 entities {{ 
                     urn
-                    ... on Tag {{ 
+                    ... on Tag {{
+                        urn
                         properties {{ 
                             name
                         }}
@@ -90,7 +129,8 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
                 entities: searchResults {{
                     entity {{
                         urn
-                        ... on Tag {{ 
+                        ... on Tag {{
+                            urn
                             properties {{ 
                                 name
                             }}
@@ -100,6 +140,11 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
             }}
         }}")
     })
+}
+
+#[derive(Deserialize)]
+struct TagResponse {
+    data: datahub::TagEntity,
 }
 
 #[derive(Deserialize)]
@@ -116,7 +161,7 @@ struct QueryResponseData {
 #[serde(tag = "__typename")]
 enum QueryResults {
     AutoCompleteResults { 
-        entities: Vec<TagEntity>
+        entities: Vec<datahub::Tag>
     },
     SearchResults {
         start: i32,
@@ -128,18 +173,7 @@ enum QueryResults {
 
 #[derive(Deserialize)]
 struct SearchEntity {
-    entity: TagEntity,
-}
-
-#[derive(Deserialize)]
-struct TagEntity {
-    urn: String,
-    properties: TagProperties,
-}
-
-#[derive(Deserialize)]
-struct TagProperties {
-    name: String,
+    entity: datahub::Tag,
 }
 
 impl QueryResults {

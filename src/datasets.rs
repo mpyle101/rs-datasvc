@@ -5,26 +5,105 @@ use hyper::Body;
 use serde::{Serialize, Deserialize};
 use serde_json::{Result, json};
 
+use crate::datahub;
+
+const DATASET_QUERY: &'static str = "
+    urn
+    __typename
+    ... on Dataset { 
+        name
+        properties { 
+            name
+        }
+        sub_types: subTypes {
+            type_names: typeNames
+        }
+        tags {
+            tags {
+                tag {
+                    urn
+                    properties {
+                        name
+                    }
+                }
+            }
+        }
+    }
+";
+
 #[derive(Serialize)]
-pub(crate) struct Datasets {
+pub struct Datasets {
     data: Vec<Dataset>,
     paging: Option<Paging>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Dataset {
+pub struct Dataset {
     id: String,
     name: String,
+    tags: Vec<Tag>,
     sub_type: Option<String>,
     short_name: Option<String>,
 }
 
 #[derive(Serialize)]
-pub(crate) struct Paging {
+pub struct Tag {
+    id: String,
+    name: String,
+}
+
+#[derive(Serialize)]
+pub struct Paging {
     total: i32,
     limit: i32,
     offset: i32,
+}
+
+impl Dataset {
+    fn from_entity(entity: &DatasetEntity) -> Dataset
+    {
+        Dataset {
+            id: entity.urn.to_owned(),
+            name: entity.name.to_owned(),
+            tags: entity.tags.as_ref()
+                .map_or_else(|| vec![], |tags| tags.tags.iter()
+                    .map(|e| Tag {
+                        id: e.tag.urn.to_owned(),
+                        name: e.tag.properties.name.to_owned()
+                    })
+                    .collect()
+                ),
+            sub_type: entity.sub_types.as_ref()
+                .map(|st| st.type_names[0].to_owned()),
+            short_name: entity.properties.as_ref()
+                .map(|props| props.name.to_owned()),
+        }
+    }
+}
+
+pub(crate) async fn by_id(resp: Response<Body>) -> Result<Dataset>
+{
+    let bytes = hyper::body::to_bytes(resp.into_body())
+        .await
+        .unwrap();
+    let body: DatasetResponse = serde_json::from_slice(&bytes).unwrap();
+    let entity = body.data.dataset;
+
+    Ok(Dataset::from_entity(&entity))
+}
+
+pub(crate) fn build_id_query(id: &str) -> String
+{
+    let value = json!({
+        "query": format!("{{ 
+            dataset(urn: \"{id}\") {{
+                {DATASET_QUERY}
+            }}
+        }}")
+    });
+
+    format!("{value}")
 }
 
 pub(crate) async fn by_query(resp: Response<Body>) -> Result<Datasets>
@@ -65,17 +144,8 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                 limit: {limit},
             }}) {{
                 __typename
-                entities {{ 
-                    urn
-                    ... on Dataset {{ 
-                        name
-                        properties {{ 
-                            name
-                        }}
-                        sub_types: subTypes {{
-                            type_names: typeNames
-                        }}
-                    }}
+                entities {{
+                    {DATASET_QUERY}
                 }}
             }}
         }}")
@@ -103,16 +173,7 @@ fn build_tags_query(
                 total,
                 entities: searchResults {{
                     entity {{
-                        urn
-                        ... on Dataset {{ 
-                            name
-                            properties {{ 
-                                name
-                            }}
-                            sub_types: subTypes {{
-                                type_names: typeNames
-                            }}
-                        }}
+                        {DATASET_QUERY}
                     }}
                 }}
             }}
@@ -136,21 +197,22 @@ fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
                 total
                 entities: searchResults {{
                     entity {{
-                        urn
-                        ... on Dataset {{ 
-                            name
-                            properties {{ 
-                                name
-                            }}
-                            sub_types: subTypes {{
-                                type_names: typeNames
-                            }}
-                        }}
+                        {DATASET_QUERY}
                     }}
                 }}
             }}
         }}")
     })
+}
+
+#[derive(Deserialize)]
+struct DatasetResponse {
+    data: DatasetResponseData,
+}
+
+#[derive(Deserialize)]
+struct DatasetResponseData {
+    dataset: DatasetEntity,
 }
 
 #[derive(Deserialize)]
@@ -186,6 +248,7 @@ struct SearchEntity {
 struct DatasetEntity {
     urn: String,
     name: String,
+    tags: Option<datahub::Tags>,
     sub_types: Option<DatasetSubType>,
     properties: Option<DatasetProperties>,
 }
@@ -215,29 +278,13 @@ impl QueryResults {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(|e| Dataset {
-                            id: e.urn.to_owned(),
-                            name: e.name.to_owned(),
-                            sub_type: e.sub_types.as_ref()
-                                .map(|st| st.type_names[0].to_owned()),
-                            short_name: e.properties.as_ref()
-                                .map(|props| props.name.to_owned()),
-                        }
-                    )
-                .collect()
+                    .map(|e| Dataset::from_entity(e))
+                    .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
-                    .map(|e| Dataset {
-                            id: e.entity.urn.to_owned(),
-                            name: e.entity.name.to_owned(),
-                            sub_type: e.entity.sub_types.as_ref()
-                                .map(|st| st.type_names[0].to_owned()),
-                            short_name: e.entity.properties.as_ref()
-                                .map(|props| props.name.to_owned()),
-                        }
-                    )
-                .collect()
+                    .map(|e| Dataset::from_entity(&e.entity))
+                    .collect()
             },
         }
     }
