@@ -15,8 +15,9 @@ pub struct Tags {
 
 #[derive(Serialize)]
 pub struct Tag {
-    id: String,
-    name: String,
+    pub id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -31,7 +32,10 @@ impl Tag {
     {
         Tag {
             id: tag.urn.to_owned(),
-            name: tag.properties.name.to_owned(),
+            name: tag.properties.as_ref()
+                .map(|props| props.name.to_owned()),
+            description: tag.properties.as_ref()
+                .map(|props| props.description.to_owned()),
         }
     }
 }
@@ -44,22 +48,6 @@ pub async fn by_id(resp: Response<Body>) -> Result<Tag>
     let body: TagResponse = serde_json::from_slice(&bytes).unwrap();
 
     Ok(Tag::from_entity(&body.data.tag))
-}
-
-pub fn build_id_query(id: &str) -> String
-{
-    let value = json!({
-        "query": format!("{{ 
-            tag(urn: \"{id}\") {{
-                urn
-                properties {{ 
-                    name
-                }}
-            }}
-        }}")
-    });
-
-    format!("{value}")
 }
 
 pub async fn by_query(resp: Response<Body>) -> Result<Tags>
@@ -75,7 +63,52 @@ pub async fn by_query(resp: Response<Body>) -> Result<Tags>
     Ok(Tags { data, paging })
 }
 
-pub fn build_query(params: HashMap<&str, &str>) -> String
+pub fn build_create_tag(name: &str, desc: &str) -> String
+{
+    let value = CreateTag {
+        entity: TagValue { 
+            value: TagSnapshot { 
+                snapshot: TagData {
+                    urn: format!("urn:li:tag:{name}"),
+                    aspects: vec![
+                        TagAspect {
+                            properties: TagProperties {
+                                name: name.to_string(),
+                                description: desc.to_string(),
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    };
+    
+    serde_json::to_string(&value).unwrap()
+}
+
+pub fn build_delete_tag(id: &str) -> String
+{
+    format!(r#"{{"urn": "{id}"}}"#)
+}
+
+pub fn build_id_query(id: &str) -> String
+{
+    let value = json!({
+        "query": format!(r#"{{ 
+            tag(urn: "{id}") {{
+                urn
+                properties {{ 
+                    name
+                    description
+                }}
+            }}
+        }}"#)
+    });
+
+    format!("{value}")
+}
+
+pub fn build_params_query(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
@@ -90,10 +123,10 @@ pub fn build_query(params: HashMap<&str, &str>) -> String
 fn build_name_query(query: &str, limit: &str) -> serde_json::Value
 {
     json!({
-        "query": format!("{{ 
+        "query": format!(r#"{{ 
             results: autoComplete(input: {{ 
                 type: TAG,
-                query: \"{query}\",
+                query: "{query}",
                 limit: {limit},
             }}) {{
                 __typename
@@ -103,21 +136,22 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                         urn
                         properties {{ 
                             name
+                            description
                         }}
                     }}
                 }} 
             }}
-        }}")
+        }}"#)
     })
 }
 
 fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
 {
     json!({
-        "query": format!("{{ 
+        "query": format!(r#"{{ 
             results: search(input: {{ 
                 type: TAG,
-                query: \"\",
+                query: "",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -132,12 +166,13 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
                             urn
                             properties {{ 
                                 name
+                                description
                             }}
                         }}
                     }}
                 }}
             }}
-        }}")
+        }}"#)
     })
 }
 
@@ -202,3 +237,36 @@ impl QueryResults {
     }
 }
 
+#[derive(Serialize)]
+struct CreateTag {
+    entity: TagValue,
+}
+
+#[derive(Serialize)]
+struct TagValue {
+    value: TagSnapshot,
+}
+
+#[derive(Serialize)]
+struct TagSnapshot {
+    #[serde(rename(serialize = "com.linkedin.metadata.snapshot.TagSnapshot"))]
+    snapshot: TagData,
+}
+
+#[derive(Serialize)]
+struct TagData {
+    urn: String,
+    aspects: Vec<TagAspect>,
+}
+
+#[derive(Serialize)]
+struct TagAspect {
+    #[serde(rename(serialize = "com.linkedin.tag.TagProperties"))]
+    properties: TagProperties,
+}
+
+#[derive(Serialize)]
+struct TagProperties {
+    name: String,
+    description: String,
+}

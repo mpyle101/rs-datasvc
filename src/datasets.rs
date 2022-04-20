@@ -31,6 +31,7 @@ const DATASET_QUERY: &str = "
                     urn
                     properties {
                         name
+                        description
                     }
                 }
             }
@@ -97,7 +98,8 @@ impl Tag {
     {
         Tag {
             id: entity.tag.urn.to_owned(),
-            name: entity.tag.properties.name.to_owned(),
+            name: entity.tag.properties.as_ref()
+                .map_or_else(String::new, |props| props.name.to_owned()),
         }
     }
 }
@@ -137,19 +139,6 @@ pub async fn by_id(resp: Response<Body>) -> Result<Dataset>
     Ok(Dataset::from_entity(&entity))
 }
 
-pub fn build_id_query(id: &str) -> String
-{
-    let value = json!({
-        "query": format!("{{ 
-            dataset(urn: \"{id}\") {{
-                {DATASET_QUERY}
-            }}
-        }}")
-    });
-
-    format!("{value}")
-}
-
 pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
@@ -163,7 +152,20 @@ pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
     Ok(Datasets { data, paging })
 }
 
-pub fn build_query(params: HashMap<&str, &str>) -> String
+pub fn build_id_query(id: &str) -> String
+{
+    let value = json!({
+        "query": format!(r#"{{ 
+            dataset(urn: "{id}") {{
+                {DATASET_QUERY}
+            }}
+        }}"#)
+    });
+
+    format!("{value}")
+}
+
+pub fn build_params_query(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
@@ -181,10 +183,10 @@ pub fn build_query(params: HashMap<&str, &str>) -> String
 fn build_name_query(query: &str, limit: &str) -> serde_json::Value
 {
     json!({
-        "query": format!("{{ 
+        "query": format!(r#"{{ 
             results: autoComplete(input: {{ 
                 type: DATASET,
-                query: \"{query}\",
+                query: "{query}",
                 limit: {limit},
             }}) {{
                 __typename
@@ -192,7 +194,7 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                     {DATASET_QUERY}
                 }}
             }}
-        }}")
+        }}"#)
     })
 }
 
@@ -204,10 +206,10 @@ fn build_tags_query(
 {
     let query = tags.replace(',', " OR ");
     json!({
-        "query": format!("{{ 
+        "query": format!(r#"{{ 
             results: search(input: {{ 
                 type: DATASET,
-                query: \"tags:{query}\",
+                query: "tags:{query}",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -221,17 +223,17 @@ fn build_tags_query(
                     }}
                 }}
             }}
-        }}")
+        }}"#)
     })
 }
 
 fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
 {
     json!({
-        "query": format!("{{ 
+        "query": format!(r#"{{ 
             results: search(input: {{ 
                 type: DATASET,
-                query: \"\",
+                query: "",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -245,7 +247,7 @@ fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
                     }}
                 }}
             }}
-        }}")
+        }}"#)
     })
 }
 

@@ -11,12 +11,13 @@ use axum::{
     handler::Handler,
     http::{header, Method, Request, StatusCode, Uri},
     response::{Html, IntoResponse},
-    routing::get
+    routing::get,
 };
 use hyper::{
     Body,
     client::HttpConnector,
 };
+use serde::Deserialize;
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -26,8 +27,14 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
 {
     let app = axum::Router::new()
         .route("/", get(root))
-        .route("/tags", get(tags_by_query))
-        .route("/tags/:id", get(tags_by_id))
+        .route("/tags",
+            get(tags_by_query)
+            .post(create_tag)
+        )
+        .route("/tags/:id", 
+            get(tags_by_id)
+            .delete(delete_tag)
+        )
         .route("/datasets", get(datasets_by_query))
         .route("/datasets/:id", get(dataset_by_id))
         .layer(Extension(Client::new()))
@@ -63,8 +70,8 @@ async fn tags_by_id(
 ) -> Json<tags::Tag>
 {
     let query = tags::build_id_query(&id);
-    let req  = build_request(query);
-    let resp = client.request(req)
+    let req   = graphql_request(query);
+    let resp  = client.request(req)
         .await
         .unwrap();
     let results = tags::by_id(resp)
@@ -81,9 +88,9 @@ async fn tags_by_query(
 {
     let params: HashMap<_, _> = req.uri().query()
         .map_or_else(HashMap::new, parse_query);
-    let data = tags::build_query(params);
-    let req  = build_request(data);
-    let resp = client.request(req)
+    let query = tags::build_params_query(params);
+    let req   = graphql_request(query);
+    let resp  = client.request(req)
         .await
         .unwrap();
     let results = tags::by_query(resp)
@@ -93,14 +100,56 @@ async fn tags_by_query(
     results.into()
 }
 
+async fn create_tag(
+    Extension(client): Extension<Client>,
+    Json(payload): Json<CreateTag>
+) -> impl IntoResponse
+{
+    let desc = payload.description.unwrap_or("".to_string());
+    let data = tags::build_create_tag(&payload.name, &desc);
+    let req  = entities_request("ingest", data);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let status = if resp.status() == StatusCode::OK {
+        StatusCode::CREATED
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    };
+
+    let name = payload.name;
+    (status, Json(tags::Tag {
+        id: format!("urn:li:tag:{name}"),
+        name: Some(name.to_owned()),
+        description: Some(desc.to_owned()),
+    }))
+}
+
+async fn delete_tag(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+) -> StatusCode
+{
+    let data = tags::build_delete_tag(&id);
+    let req  = entities_request("delete", data);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    if resp.status() == StatusCode::OK {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
 async fn dataset_by_id(
     Path(id): Path<String>,
     Extension(client): Extension<Client>,
 ) -> Json<datasets::Dataset>
 {
     let query = datasets::build_id_query(&id);
-    let req  = build_request(query);
-    let resp = client.request(req)
+    let req   = graphql_request(query);
+    let resp  = client.request(req)
         .await
         .unwrap();
     let results = datasets::by_id(resp)
@@ -117,9 +166,9 @@ async fn datasets_by_query(
 {
     let params: HashMap<_, _> = req.uri().query()
         .map_or_else(HashMap::new, parse_query);
-    let query = datasets::build_query(params);
-    let req  = build_request(query);
-    let resp = client.request(req)
+    let query = datasets::build_params_query(params);
+    let req   = graphql_request(query);
+    let resp  = client.request(req)
         .await
         .unwrap();
     let results = datasets::by_query(resp)
@@ -148,7 +197,7 @@ fn parse_query(query: &str) -> HashMap<&str, &str>
         .collect()
 }
 
-fn build_request(data: String) -> Request<Body>
+fn graphql_request(data: String) -> Request<Body>
 {
     Request::builder()
         .method(Method::POST)
@@ -157,4 +206,21 @@ fn build_request(data: String) -> Request<Body>
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(data))
         .unwrap()
+}
+
+fn entities_request(action: &str, data: String) -> Request<Body>
+{
+    Request::builder()
+        .method(Method::POST)
+        .uri(format!("http://localhost:8080/entities?action={action}"))
+        .header("X-DataHub-Actor", "urn:li:corpuser:datahub")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(data))
+        .unwrap()
+}
+
+#[derive(Deserialize)]
+struct CreateTag {
+    name: String,
+    description: Option<String>,
 }

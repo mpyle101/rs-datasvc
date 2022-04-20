@@ -13,10 +13,11 @@ pub struct TagEntity {
 #[derive(Deserialize)]
 pub struct Tag {
     pub urn: String,
-    pub properties: TagProperties,
+    pub properties: Option<TagProperties>,
 }
 
 #[derive(Deserialize)]
 pub struct TagProperties {
     pub name: String,
+    pub description: String,
 }
