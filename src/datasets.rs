@@ -7,7 +7,7 @@ use serde_json::{Result, json};
 
 use crate::datahub;
 
-const DATASET_QUERY: &'static str = "
+const DATASET_QUERY: &str = "
     urn
     __typename
     ... on Dataset { 
@@ -67,7 +67,7 @@ impl Dataset {
             id: entity.urn.to_owned(),
             name: entity.name.to_owned(),
             tags: entity.tags.as_ref()
-                .map_or_else(|| vec![], |tags| tags.tags.iter()
+                .map_or_else(Vec::new, |tags| tags.tags.iter()
                     .map(|e| Tag {
                         id: e.tag.urn.to_owned(),
                         name: e.tag.properties.name.to_owned()
@@ -278,7 +278,7 @@ impl QueryResults {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(|e| Dataset::from_entity(e))
+                    .map(Dataset::from_entity)
                     .collect()
             },
             Self::SearchResults { entities, .. } => {

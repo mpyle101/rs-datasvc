@@ -83,7 +83,7 @@ async fn tags_by_query(
 ) -> Json<tags::Tags>
 {
     let params: HashMap<_, _> = req.uri().query()
-        .map_or_else(|| HashMap::new(), |s| parse_query(s));
+        .map_or_else(HashMap::new, parse_query);
     let data = tags::build_query(params);
     let req  = build_request(data);
     let resp = client.request(req)
@@ -119,9 +119,8 @@ async fn datasets_by_query(
 ) -> Json<datasets::Datasets>
 {
     let params: HashMap<_, _> = req.uri().query()
-        .map_or_else(|| HashMap::new(), |s| parse_query(s));
+        .map_or_else(HashMap::new, parse_query);
     let query = datasets::build_query(params);
-    println!("{query}");
     let req  = build_request(query);
     let resp = client.request(req)
         .await

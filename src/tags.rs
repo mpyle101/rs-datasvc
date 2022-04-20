@@ -27,11 +27,11 @@ pub(crate) struct Paging {
 }
 
 impl Tag {
-    fn from_entity(entity: &datahub::TagEntity) -> Tag
+    fn from_entity(tag: &datahub::Tag) -> Tag
     {
         Tag {
-            id: entity.tag.urn.to_owned(),
-             name: entity.tag.properties.name.to_owned(),
+            id: tag.urn.to_owned(),
+            name: tag.properties.name.to_owned(),
         }
     }
 }
@@ -43,7 +43,7 @@ pub(crate) async fn by_id(resp: Response<Body>) -> Result<Tag>
         .unwrap();
     let body: TagResponse = serde_json::from_slice(&bytes).unwrap();
 
-    Ok(Tag::from_entity(&body.data))
+    Ok(Tag::from_entity(&body.data.tag))
 }
 
 pub(crate) fn build_id_query(id: &str) -> String
@@ -79,10 +79,9 @@ pub(crate) fn build_query(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
-    let value = if let Some(query) = params.get("query") {
-        build_name_query(query, limit)
-    }else {
-        build_tags_query(start, limit)
+    let value = match params.get("query") {
+        Some(query) => build_name_query(query, limit),
+        None        => build_tags_query(start, limit),
     };
 
     format!("{value}")
@@ -191,21 +190,13 @@ impl QueryResults {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(|e| Tag {
-                            id: e.urn.to_owned(),
-                            name: e.properties.name.to_owned(),
-                        }
-                    )
-                .collect()
+                    .map(Tag::from_entity)
+                    .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
-                    .map(|e| Tag {
-                            id: e.entity.urn.to_owned(),
-                            name: e.entity.properties.name.to_owned(),
-                        }
-                    )
-                .collect()
+                    .map(|e| Tag::from_entity(&e.entity))
+                    .collect()
             },
         }
     }
