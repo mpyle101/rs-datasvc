@@ -152,7 +152,7 @@ pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
     Ok(Datasets { data, paging })
 }
 
-pub fn build_id_query(id: &str) -> String
+pub fn id_query_body(id: &str) -> String
 {
     let value = json!({
         "query": format!(r#"{{ 
@@ -165,7 +165,7 @@ pub fn build_id_query(id: &str) -> String
     format!("{value}")
 }
 
-pub fn build_params_query(params: HashMap<&str, &str>) -> String
+pub fn params_query_body(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");

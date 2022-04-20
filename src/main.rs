@@ -69,9 +69,9 @@ async fn tags_by_id(
     Extension(client): Extension<Client>,
 ) -> Json<tags::Tag>
 {
-    let query = tags::build_id_query(&id);
-    let req   = graphql_request(query);
-    let resp  = client.request(req)
+    let body = tags::id_query_body(&id);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
         .await
         .unwrap();
     let results = tags::by_id(resp)
@@ -88,9 +88,9 @@ async fn tags_by_query(
 {
     let params: HashMap<_, _> = req.uri().query()
         .map_or_else(HashMap::new, parse_query);
-    let query = tags::build_params_query(params);
-    let req   = graphql_request(query);
-    let resp  = client.request(req)
+    let body = tags::params_query_body(params);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
         .await
         .unwrap();
     let results = tags::by_query(resp)
@@ -106,8 +106,8 @@ async fn create_tag(
 ) -> impl IntoResponse
 {
     let desc = payload.description.unwrap_or("".to_string());
-    let data = tags::build_create_tag(&payload.name, &desc);
-    let req  = entities_request("ingest", data);
+    let body = tags::create_body(&payload.name, &desc);
+    let req  = entities_request("ingest", body);
     let resp = client.request(req)
         .await
         .unwrap();
@@ -130,8 +130,8 @@ async fn delete_tag(
     Extension(client): Extension<Client>,
 ) -> StatusCode
 {
-    let data = tags::build_delete_tag(&id);
-    let req  = entities_request("delete", data);
+    let body = tags::delete_body(&id);
+    let req  = entities_request("delete", body);
     let resp = client.request(req)
         .await
         .unwrap();
@@ -147,9 +147,9 @@ async fn dataset_by_id(
     Extension(client): Extension<Client>,
 ) -> Json<datasets::Dataset>
 {
-    let query = datasets::build_id_query(&id);
-    let req   = graphql_request(query);
-    let resp  = client.request(req)
+    let body = datasets::id_query_body(&id);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
         .await
         .unwrap();
     let results = datasets::by_id(resp)
@@ -166,9 +166,9 @@ async fn datasets_by_query(
 {
     let params: HashMap<_, _> = req.uri().query()
         .map_or_else(HashMap::new, parse_query);
-    let query = datasets::build_params_query(params);
-    let req   = graphql_request(query);
-    let resp  = client.request(req)
+    let body = datasets::params_query_body(params);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
         .await
         .unwrap();
     let results = datasets::by_query(resp)

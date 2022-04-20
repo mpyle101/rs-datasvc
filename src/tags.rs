@@ -63,7 +63,7 @@ pub async fn by_query(resp: Response<Body>) -> Result<Tags>
     Ok(Tags { data, paging })
 }
 
-pub fn build_create_tag(name: &str, desc: &str) -> String
+pub fn create_body(name: &str, desc: &str) -> String
 {
     let value = CreateTag {
         entity: TagValue { 
@@ -86,12 +86,12 @@ pub fn build_create_tag(name: &str, desc: &str) -> String
     serde_json::to_string(&value).unwrap()
 }
 
-pub fn build_delete_tag(id: &str) -> String
+pub fn delete_body(id: &str) -> String
 {
     format!(r#"{{"urn": "{id}"}}"#)
 }
 
-pub fn build_id_query(id: &str) -> String
+pub fn id_query_body(id: &str) -> String
 {
     let value = json!({
         "query": format!(r#"{{ 
@@ -108,7 +108,7 @@ pub fn build_id_query(id: &str) -> String
     format!("{value}")
 }
 
-pub fn build_params_query(params: HashMap<&str, &str>) -> String
+pub fn params_query_body(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
