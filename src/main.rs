@@ -11,7 +11,7 @@ use axum::{
     handler::Handler,
     http::{header, Method, Request, StatusCode, Uri},
     response::{Html, IntoResponse},
-    routing::get,
+    routing::{get, post, delete},
 };
 use hyper::{
     Body,
@@ -37,6 +37,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
         )
         .route("/datasets", get(datasets_by_query))
         .route("/datasets/:id", get(dataset_by_id))
+        .route("/datasets/:id/tags", post(dataset_add_tag))
+        .route("/datasets/:id/tags/:tid", delete(dataset_remove_tag))
         .layer(Extension(Client::new()))
         .fallback(not_found.into_service());
 
@@ -67,7 +69,7 @@ async fn root() -> Html<&'static str>
 async fn tags_by_id(
     Path(id): Path<String>,
     Extension(client): Extension<Client>,
-) -> Json<tags::Tag>
+) -> Json<tags::TagEnvelope>
 {
     let body = tags::id_query_body(&id);
     let req  = graphql_request(body);
@@ -142,23 +144,6 @@ async fn delete_tag(
     }
 }
 
-async fn dataset_by_id(
-    Path(id): Path<String>,
-    Extension(client): Extension<Client>,
-) -> Json<datasets::Dataset>
-{
-    let body = datasets::id_query_body(&id);
-    let req  = graphql_request(body);
-    let resp = client.request(req)
-        .await
-        .unwrap();
-    let results = datasets::by_id(resp)
-        .await
-        .unwrap();
-
-    results.into()
-}
-
 async fn datasets_by_query(
     Extension(client): Extension<Client>,
     req: Request<Body>
@@ -176,6 +161,64 @@ async fn datasets_by_query(
         .unwrap();
 
     results.into()
+}
+
+async fn dataset_by_id(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+) -> (StatusCode, Json<datasets::DatasetEnvelope>)
+{
+    let body = datasets::id_query_body(&id);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let envelope = datasets::by_id(resp)
+        .await
+        .unwrap();
+    let status_code = if envelope.dataset.is_none() { 
+        StatusCode::NOT_FOUND
+    } else {
+        StatusCode::OK
+    };
+
+    (status_code, envelope.into())
+}
+
+async fn dataset_add_tag(
+    Path(id): Path<String>,
+    Json(payload): Json<AddTag>,
+    Extension(client): Extension<Client>
+) -> StatusCode
+{
+    let body = tags::add_body(&id, &payload.tag);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    if resp.status() == StatusCode::OK {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+async fn dataset_remove_tag(
+    Path(id): Path<String>,
+    Path(tid): Path<String>,
+    Extension(client): Extension<Client>
+) -> StatusCode
+{
+    let body = tags::remove_body(&id, &tid);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    if resp.status() == StatusCode::OK {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
 }
 
 async fn not_found(uri: Uri) -> impl IntoResponse
@@ -223,4 +266,9 @@ fn entities_request(action: &str, data: String) -> Request<Body>
 struct CreateTag {
     name: String,
     description: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct AddTag {
+    tag: String,
 }

@@ -5,7 +5,8 @@ use hyper::Body;
 use serde::{Serialize, Deserialize};
 use serde_json::{Result, json};
 
-use crate::datahub;
+use crate::datahub as dh;
+use crate::tags;
 
 const DATASET_QUERY: &str = "
     urn
@@ -41,8 +42,13 @@ const DATASET_QUERY: &str = "
 
 #[derive(Serialize)]
 pub struct Datasets {
-    data: Vec<Dataset>,
+    data: Vec<DatasetEnvelope>,
     paging: Option<Paging>,
+}
+
+#[derive(Serialize)]
+pub struct DatasetEnvelope {
+    pub dataset: Option<Dataset>
 }
 
 #[derive(Serialize)]
@@ -54,14 +60,8 @@ pub struct Dataset {
     #[serde(rename(serialize = "type"))]
     class: Option<String>,
 
-    tags: Vec<Tag>,
+    tags: Vec<tags::TagEnvelope>,
     fields: Option<Vec<Field>>,
-}
-
-#[derive(Serialize)]
-pub struct Tag {
-    id: String,
-    name: String,
 }
 
 #[derive(Serialize)]
@@ -83,7 +83,7 @@ pub struct Paging {
 }
 
 impl Field {
-    fn from_dsfield(dsf: &DatasetField) -> Field
+    fn from_dsfield(dsf: &dh::DatasetField) -> Field
     {
         Field {
             path: dsf.path.to_owned(),
@@ -93,33 +93,38 @@ impl Field {
     }
 }
 
-impl Tag {
-    fn from_entity(entity: &datahub::TagEntity) -> Tag
+impl DatasetEnvelope {
+    fn from_entity(e: &dh::DatasetEntity) -> DatasetEnvelope
     {
-        Tag {
-            id: entity.tag.urn.to_owned(),
-            name: entity.tag.properties.as_ref()
-                .map_or_else(String::new, |props| props.name.to_owned()),
+        DatasetEnvelope { 
+            dataset: e.dataset.as_ref().map(|ds| Dataset::from_entity(&ds))
+        }
+    }
+
+    fn from_dataset(ds: &dh::Dataset) -> DatasetEnvelope
+    {
+        DatasetEnvelope { 
+            dataset: Some(Dataset::from_entity(ds))
         }
     }
 }
 
 impl Dataset {
-    fn from_entity(entity: &DatasetEntity) -> Dataset
+    fn from_entity(e: &dh::Dataset) -> Dataset
     {
         Dataset {
-            id: entity.urn.to_owned(),
-            path: entity.name.to_owned(),
-            name: entity.properties.as_ref()
+            id: e.urn.to_owned(),
+            path: e.name.to_owned(),
+            name: e.properties.as_ref()
                 .map(|props| props.name.to_owned()),
-            class: entity.sub_types.as_ref()
+            class: e.sub_types.as_ref()
                 .map(|st| st.names[0].to_owned()),
-            tags: entity.tags.as_ref()
+            tags: e.tags.as_ref()
                 .map_or_else(Vec::new, |tags| tags.tags.iter()
-                    .map(Tag::from_entity)
+                    .map(tags::TagEnvelope::from_entity)
                     .collect()
                 ),
-            fields: entity.schema.as_ref()
+            fields: e.schema.as_ref()
                 .map(|schema| schema.fields.iter()
                     .map(Field::from_dsfield)
                     .collect()
@@ -128,15 +133,14 @@ impl Dataset {
     }
 }
 
-pub async fn by_id(resp: Response<Body>) -> Result<Dataset>
+pub async fn by_id(resp: Response<Body>) -> Result<DatasetEnvelope>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
         .unwrap();
-    let body: DatasetResponse = serde_json::from_slice(&bytes).unwrap();
-    let entity = body.data.dataset;
+    let body: DatasetResponse = serde_json::from_slice(&bytes)?;
 
-    Ok(Dataset::from_entity(&entity))
+    Ok(DatasetEnvelope::from_entity(&body.data))
 }
 
 pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
@@ -253,12 +257,7 @@ fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
 
 #[derive(Deserialize)]
 struct DatasetResponse {
-    data: DatasetResponseData,
-}
-
-#[derive(Deserialize)]
-struct DatasetResponseData {
-    dataset: DatasetEntity,
+    data: dh::DatasetEntity,
 }
 
 #[derive(Deserialize)]
@@ -275,7 +274,7 @@ struct QueryResponseData {
 #[serde(tag = "__typename")]
 enum QueryResults {
     AutoCompleteResults { 
-        entities: Vec<DatasetEntity>
+        entities: Vec<dh::Dataset>
     },
     SearchResults {
         start: i32,
@@ -287,39 +286,7 @@ enum QueryResults {
 
 #[derive(Deserialize)]
 struct SearchEntity {
-    entity: DatasetEntity,
-}
-
-#[derive(Deserialize)]
-struct DatasetEntity {
-    urn: String,
-    name: String,
-    tags: Option<datahub::Tags>,
-    schema: Option<DatasetSchema>,
-    sub_types: Option<DatasetSubType>,
-    properties: Option<DatasetProperties>,
-}
-
-#[derive(Deserialize)]
-struct DatasetSchema {
-    fields: Vec<DatasetField>,
-}
-
-#[derive(Deserialize)]
-struct DatasetField {
-    path: String,
-    class: String,
-    native: String,
-}
-
-#[derive(Deserialize)]
-struct DatasetSubType {
-    names: Vec<String>
-}
-
-#[derive(Deserialize)]
-struct DatasetProperties {
-    name: String,
+    entity: dh::Dataset,
 }
 
 impl QueryResults {
@@ -332,17 +299,18 @@ impl QueryResults {
         }
     }
 
-    fn process(&self) -> Vec<Dataset>
+    fn process(&self) -> Vec<DatasetEnvelope>
     {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(Dataset::from_entity)
+                    .map(DatasetEnvelope::from_dataset)
                     .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
-                    .map(|e| Dataset::from_entity(&e.entity))
+                    .map(|e| &e.entity)
+                    .map(DatasetEnvelope::from_dataset)
                     .collect()
             },
         }

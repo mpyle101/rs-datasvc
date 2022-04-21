@@ -5,12 +5,17 @@ use hyper::Body;
 use serde::{Serialize, Deserialize};
 use serde_json::{Result, json};
 
-use crate::datahub;
+use crate::datahub as dh;
 
 #[derive(Serialize)]
 pub struct Tags {
-    data: Vec<Tag>,
+    data: Vec<TagEnvelope>,
     paging: Option<Paging>,
+}
+
+#[derive(Serialize)]
+pub struct TagEnvelope {
+    pub tag: Option<Tag>
 }
 
 #[derive(Serialize)]
@@ -27,8 +32,24 @@ pub struct Paging {
     offset: i32,
 }
 
+impl TagEnvelope {
+    pub fn from_entity(e: &dh::TagEntity) -> TagEnvelope
+    {
+        TagEnvelope { 
+            tag: e.tag.as_ref().map(|tag| Tag::from_entity(&tag))
+        }
+    }
+
+    fn from_tag(tag: &dh::Tag) -> TagEnvelope
+    {
+        TagEnvelope { 
+            tag: Some(Tag::from_entity(tag))
+        }
+    }
+}
+
 impl Tag {
-    fn from_entity(tag: &datahub::Tag) -> Tag
+    fn from_entity(tag: &dh::Tag) -> Tag
     {
         Tag {
             id: tag.urn.to_owned(),
@@ -40,14 +61,14 @@ impl Tag {
     }
 }
 
-pub async fn by_id(resp: Response<Body>) -> Result<Tag>
+pub async fn by_id(resp: Response<Body>) -> Result<TagEnvelope>
 {
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
         .unwrap();
     let body: TagResponse = serde_json::from_slice(&bytes).unwrap();
 
-    Ok(Tag::from_entity(&body.data.tag))
+    Ok(TagEnvelope::from_entity(&body.data))
 }
 
 pub async fn by_query(resp: Response<Body>) -> Result<Tags>
@@ -61,6 +82,34 @@ pub async fn by_query(resp: Response<Body>) -> Result<Tags>
     let paging = body.data.results.paging();
 
     Ok(Tags { data, paging })
+}
+
+pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
+{
+    let value = json!({
+        "mutation": format!(r#"{{ 
+            addTag(input: {{ 
+                tagUrn: "{tag_id}",
+                resourceUrn: "{rsrc_id}"
+            }})
+        }}"#)
+    });
+
+    format!("{value}")
+}
+
+pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
+{
+    let value = json!({
+        "mutation": format!(r#"{{ 
+            removeTag(input: {{ 
+                tagUrn: "{tag_id}",
+                resourceUrn: "{rsrc_id}"
+            }})
+        }}"#)
+    });
+
+    format!("{value}")
 }
 
 pub fn create_body(name: &str, desc: &str) -> String
@@ -178,7 +227,7 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
 
 #[derive(Deserialize)]
 struct TagResponse {
-    data: datahub::TagEntity,
+    data: dh::TagEntity,
 }
 
 #[derive(Deserialize)]
@@ -195,7 +244,7 @@ struct QueryResponseData {
 #[serde(tag = "__typename")]
 enum QueryResults {
     AutoCompleteResults { 
-        entities: Vec<datahub::Tag>
+        entities: Vec<dh::Tag>
     },
     SearchResults {
         start: i32,
@@ -207,7 +256,7 @@ enum QueryResults {
 
 #[derive(Deserialize)]
 struct SearchEntity {
-    entity: datahub::Tag,
+    entity: dh::Tag,
 }
 
 impl QueryResults {
@@ -220,17 +269,18 @@ impl QueryResults {
         }
     }
 
-    fn process(&self) -> Vec<Tag>
+    fn process(&self) -> Vec<TagEnvelope>
     {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(Tag::from_entity)
+                    .map(TagEnvelope::from_tag)
                     .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
-                    .map(|e| Tag::from_entity(&e.entity))
+                    .map(|e| &e.entity)
+                    .map(TagEnvelope::from_tag)
                     .collect()
             },
         }

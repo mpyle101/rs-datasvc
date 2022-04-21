@@ -11,7 +11,12 @@ GET /datasets?tags=blah   => datasets with tags like "blah" (paged)
 GET /datasets/:id         => dataset with the specified id
 
 POST /tags                => create a new tag
+    { name: string, description: string }
 DELETE /tags/:id          => delete the specified tag
+
+POST /datasets/:id/tags   => add a tag to a dataset
+    { tag: string(tid) }
+DELETE /datasets/:id/tags/:tid  => remove the tag from the dataset
 </pre>
 * multiple tags are specified with comma delimiters "tags=awm1,Legacy" and are OR'd
   
