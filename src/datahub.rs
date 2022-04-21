@@ -58,3 +58,9 @@ pub struct DatasetSubType {
 pub struct DatasetProperties {
     pub name: String,
 }
+
+
+#[derive(Deserialize)]
+pub struct ErrorMessage {
+    pub message: String
+}

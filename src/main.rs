@@ -19,6 +19,8 @@ use hyper::{
 };
 use serde::Deserialize;
 
+use datahub as dh;
+
 type Client = hyper::client::Client<HttpConnector, Body>;
 
 
@@ -294,14 +296,9 @@ struct AddTag {
 #[derive(Deserialize)]
 struct DatasetTagResponse {
     data: Option<DatasetTagResult>,
-    errors: Option<Vec<DatahubError>>,
+    errors: Option<Vec<dh::ErrorMessage>>,
 }
 #[derive(Deserialize)]
 struct DatasetTagResult {
     success: bool
-}
-
-#[derive(Deserialize)]
-struct DatahubError {
-    message: String
 }
