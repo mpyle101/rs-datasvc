@@ -87,12 +87,13 @@ pub async fn by_query(resp: Response<Body>) -> Result<Tags>
 pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
 {
     let value = json!({
-        "mutation": format!(r#"{{ 
-            addTag(input: {{ 
+        "query": format!(r#"mutation addTag {{
+            success: addTag(input: {{
                 tagUrn: "{tag_id}",
                 resourceUrn: "{rsrc_id}"
             }})
-        }}"#)
+        }}"#),
+        "variables": {}
     });
 
     format!("{value}")
@@ -101,12 +102,13 @@ pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
 pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
 {
     let value = json!({
-        "mutation": format!(r#"{{ 
-            removeTag(input: {{ 
+        "query": format!(r#"mutation addTag {{
+            success: removeTag(input: {{ 
                 tagUrn: "{tag_id}",
                 resourceUrn: "{rsrc_id}"
             }})
-        }}"#)
+        }}"#),
+        "variables": {}
     });
 
     format!("{value}")
@@ -175,7 +177,7 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
         "query": format!(r#"{{ 
             results: autoComplete(input: {{ 
                 type: TAG,
-                query: "{query}",
+                query: "*{query}*",
                 limit: {limit},
             }}) {{
                 __typename
@@ -200,7 +202,7 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
         "query": format!(r#"{{ 
             results: search(input: {{ 
                 type: TAG,
-                query: "",
+                query: "*",
                 start: {start},
                 count: {limit},
             }}) {{

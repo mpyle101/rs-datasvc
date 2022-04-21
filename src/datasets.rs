@@ -190,7 +190,7 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
         "query": format!(r#"{{ 
             results: autoComplete(input: {{ 
                 type: DATASET,
-                query: "{query}",
+                query: "*{query}*",
                 limit: {limit},
             }}) {{
                 __typename
@@ -237,7 +237,7 @@ fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
         "query": format!(r#"{{ 
             results: search(input: {{ 
                 type: DATASET,
-                query: "",
+                query: "*",
                 start: {start},
                 count: {limit},
             }}) {{

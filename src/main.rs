@@ -196,16 +196,31 @@ async fn dataset_add_tag(
     let resp = client.request(req)
         .await
         .unwrap();
-    if resp.status() == StatusCode::OK {
-        StatusCode::NO_CONTENT
+    let status = resp.status();
+    let bytes = hyper::body::to_bytes(resp.into_body())
+        .await
+        .unwrap();
+    let result: DatasetTagResponse = serde_json::from_slice(&bytes).unwrap();
+
+    if let Some(errors) = result.errors {
+        errors.iter().for_each(|msg| println!("{:?}", msg.message))
+    }
+    if status == StatusCode::OK {
+        match result.data {
+            Some(res) => if res.success { 
+                    StatusCode::NO_CONTENT
+                } else {
+                    StatusCode::UNPROCESSABLE_ENTITY
+                },
+            None => StatusCode::UNPROCESSABLE_ENTITY
+        }
     } else {
-        StatusCode::INTERNAL_SERVER_ERROR
+        status
     }
 }
 
 async fn dataset_remove_tag(
-    Path(id): Path<String>,
-    Path(tid): Path<String>,
+    Path((id, tid)): Path<(String, String)>,
     Extension(client): Extension<Client>
 ) -> StatusCode
 {
@@ -214,7 +229,11 @@ async fn dataset_remove_tag(
     let resp = client.request(req)
         .await
         .unwrap();
-    if resp.status() == StatusCode::OK {
+    let status = resp.status();
+    let _bytes = hyper::body::to_bytes(resp.into_body())
+        .await
+        .unwrap();
+    if status == StatusCode::OK {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::INTERNAL_SERVER_ERROR
@@ -271,4 +290,18 @@ struct CreateTag {
 #[derive(Deserialize)]
 struct AddTag {
     tag: String,
+}
+#[derive(Deserialize)]
+struct DatasetTagResponse {
+    data: Option<DatasetTagResult>,
+    errors: Option<Vec<DatahubError>>,
+}
+#[derive(Deserialize)]
+struct DatasetTagResult {
+    success: bool
+}
+
+#[derive(Deserialize)]
+struct DatahubError {
+    message: String
 }
