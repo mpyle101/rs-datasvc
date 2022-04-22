@@ -24,6 +24,6 @@ DELETE /datasets/:id/tags/:tid  => remove the tag from the dataset
 * multiple tags are specified with comma delimiters "tags=awm1,Legacy" and are OR'd
   
 paged routes support: offset & limit query parameters  
-*default limit is 10, default offset is 0
+* default limit is 10, default offset is 0
 not-paged routes support: limit query parameter  
-*default limit is 10
+* default limit is 10
