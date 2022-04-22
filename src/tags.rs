@@ -44,7 +44,7 @@ impl From<&dh::TagEntity> for TagEnvelope {
     fn from(e: &dh::TagEntity) -> Self
     {
         TagEnvelope { 
-            tag: e.tag.as_ref().map(|tag| Tag::from(tag))
+            tag: e.tag.as_ref().map(Tag::from)
         }
     }
 }
@@ -104,7 +104,7 @@ pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
         }}",
         "variables": {{}}
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
@@ -118,7 +118,7 @@ pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
         }}",
         "variables": {{}}
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 pub fn id_query_body(id: &str) -> String
@@ -134,7 +134,7 @@ pub fn id_query_body(id: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 pub fn params_query_body(params: HashMap<&str, &str>) -> String
@@ -171,7 +171,7 @@ fn build_name_query(query: &str, limit: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 fn build_tags_query(start: &str, limit: &str) -> String
@@ -203,7 +203,7 @@ fn build_tags_query(start: &str, limit: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 #[derive(Deserialize)]

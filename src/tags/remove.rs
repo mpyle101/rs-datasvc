@@ -32,7 +32,7 @@ impl RemoveRequest {
 impl fmt::Display for RemoveRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match serde_json::to_string(self) {
-            Ok(s) => write!(f, "{s}"),
+            Ok(s)   => write!(f, "{s}"),
             Err(..) => write!(f, "")
         }
     }

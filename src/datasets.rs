@@ -98,7 +98,7 @@ impl From<&dh::DatasetEntity> for DatasetEnvelope {
     fn from(e: &dh::DatasetEntity) -> Self
     {
         DatasetEnvelope { 
-            dataset: e.dataset.as_ref().map(|ds| Dataset::from(ds))
+            dataset: e.dataset.as_ref().map(Dataset::from)
         }
     }
 }
@@ -167,7 +167,7 @@ pub fn id_query_body(id: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 pub fn params_query_body(params: HashMap<&str, &str>) -> String
@@ -200,7 +200,7 @@ fn build_name_query(query: &str, limit: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 fn build_tags_query(
@@ -230,7 +230,7 @@ fn build_tags_query(
             }}
         }})
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 fn build_datasets_query(start: &str, limit: &str) -> String
@@ -255,7 +255,7 @@ fn build_datasets_query(start: &str, limit: &str) -> String
             }}
         }}"
     }}"#)
-    .replace("\n", "")
+    .replace('\n', "")
 }
 
 #[derive(Deserialize)]
