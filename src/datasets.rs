@@ -1,9 +1,10 @@
+use std::convert::From;
 use std::collections::HashMap;
 
 use axum::http::Response;
 use hyper::Body;
 use serde::{Serialize, Deserialize};
-use serde_json::{Result, json};
+use serde_json::Result;
 
 use crate::datahub as dh;
 use crate::tags;
@@ -82,8 +83,8 @@ pub struct Paging {
     offset: i32,
 }
 
-impl Field {
-    fn from_dsfield(dsf: &dh::DatasetField) -> Field
+impl From<&dh::DatasetField> for Field {
+    fn from(dsf: &dh::DatasetField) -> Self
     {
         Field {
             path: dsf.path.to_owned(),
@@ -93,24 +94,25 @@ impl Field {
     }
 }
 
-impl DatasetEnvelope {
-    fn from_entity(e: &dh::DatasetEntity) -> DatasetEnvelope
+impl From<&dh::DatasetEntity> for DatasetEnvelope {
+    fn from(e: &dh::DatasetEntity) -> Self
     {
         DatasetEnvelope { 
-            dataset: e.dataset.as_ref().map(|ds| Dataset::from_entity(&ds))
+            dataset: e.dataset.as_ref().map(|ds| Dataset::from(ds))
         }
     }
-
-    fn from_dataset(ds: &dh::Dataset) -> DatasetEnvelope
+}
+impl From<&dh::Dataset> for DatasetEnvelope {
+    fn from(ds: &dh::Dataset) -> Self
     {
         DatasetEnvelope { 
-            dataset: Some(Dataset::from_entity(ds))
+            dataset: Some(Dataset::from(ds))
         }
     }
 }
 
-impl Dataset {
-    fn from_entity(e: &dh::Dataset) -> Dataset
+impl From<&dh::Dataset> for Dataset {
+    fn from(e: &dh::Dataset) -> Self
     {
         Dataset {
             id: e.urn.to_owned(),
@@ -121,12 +123,12 @@ impl Dataset {
                 .map(|st| st.names[0].to_owned()),
             tags: e.tags.as_ref()
                 .map_or_else(Vec::new, |tags| tags.tags.iter()
-                    .map(tags::TagEnvelope::from_entity)
+                    .map(tags::TagEnvelope::from)
                     .collect()
                 ),
             fields: e.schema.as_ref()
                 .map(|schema| schema.fields.iter()
-                    .map(Field::from_dsfield)
+                    .map(Field::from)
                     .collect()
                 ),
         }
@@ -140,7 +142,7 @@ pub async fn by_id(resp: Response<Body>) -> Result<DatasetEnvelope>
         .unwrap();
     let body: DatasetResponse = serde_json::from_slice(&bytes)?;
 
-    Ok(DatasetEnvelope::from_entity(&body.data))
+    Ok(DatasetEnvelope::from(&body.data))
 }
 
 pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
@@ -158,39 +160,37 @@ pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
 
 pub fn id_query_body(id: &str) -> String
 {
-    let value = json!({
-        "query": format!(r#"{{ 
-            dataset(urn: "{id}") {{
+    format!(r#"{{
+        "query": "{{ 
+            dataset(urn: \"{id}\") {{
                 {DATASET_QUERY}
             }}
-        }}"#)
-    });
-
-    format!("{value}")
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
 pub fn params_query_body(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
-    let value = if let Some(query) = params.get("query") {
+
+    if let Some(query) = params.get("query") {
         build_name_query(query, limit)
     } else if let Some(tags) = params.get("tags") {
         build_tags_query(tags, start, limit)
     } else {
         build_datasets_query(start, limit)
-    };
-
-    format!("{value}")
+    }
 }
 
-fn build_name_query(query: &str, limit: &str) -> serde_json::Value
+fn build_name_query(query: &str, limit: &str) -> String
 {
-    json!({
-        "query": format!(r#"{{ 
+    format!(r#"{{
+        "query": "{{ 
             results: autoComplete(input: {{ 
                 type: DATASET,
-                query: "*{query}*",
+                query: \"*{query}*\",
                 limit: {limit},
             }}) {{
                 __typename
@@ -198,22 +198,23 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                     {DATASET_QUERY}
                 }}
             }}
-        }}"#)
-    })
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
 fn build_tags_query(
     tags: &str,
     start: &str,
     limit: &str
-) -> serde_json::Value
+) -> String
 {
     let query = tags.replace(',', " OR ");
-    json!({
-        "query": format!(r#"{{ 
+    format!(r#"{{
+        "query": "{{ 
             results: search(input: {{ 
                 type: DATASET,
-                query: "tags:{query}",
+                query: \"tags:{query}\",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -227,17 +228,18 @@ fn build_tags_query(
                     }}
                 }}
             }}
-        }}"#)
-    })
+        }})
+    }}"#)
+    .replace("\n", "")
 }
 
-fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
+fn build_datasets_query(start: &str, limit: &str) -> String
 {
-    json!({
-        "query": format!(r#"{{ 
+    format!(r#"{{
+        "query": "{{ 
             results: search(input: {{ 
                 type: DATASET,
-                query: "*",
+                query: \"*\",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -251,8 +253,9 @@ fn build_datasets_query(start: &str, limit: &str) -> serde_json::Value
                     }}
                 }}
             }}
-        }}"#)
-    })
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
 #[derive(Deserialize)]
@@ -304,13 +307,13 @@ impl QueryResults {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(DatasetEnvelope::from_dataset)
+                    .map(DatasetEnvelope::from)
                     .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
                     .map(|e| &e.entity)
-                    .map(DatasetEnvelope::from_dataset)
+                    .map(DatasetEnvelope::from)
                     .collect()
             },
         }

@@ -21,7 +21,7 @@ use hyper::{
 use serde::Deserialize;
 
 use datahub as dh;
-use tags::{TagCreate, TagRemove};
+use tags::{CreateRequest, RemoveRequest};
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -33,11 +33,11 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
         .route("/", get(root))
         .route("/tags",
             get(tags_by_query)
-            .post(create_tag)
+                .post(create_tag)
         )
         .route("/tags/:id", 
             get(tags_by_id)
-            .delete(delete_tag)
+                .delete(delete_tag)
         )
         .route("/datasets", get(datasets_by_query))
         .route("/datasets/:id", get(dataset_by_id))
@@ -112,11 +112,12 @@ async fn create_tag(
 ) -> impl IntoResponse
 {
     let desc = payload.description.unwrap_or_else(|| "".to_string());
-    let body = TagCreate::from(payload.name.clone(), desc.clone());
-    let req  = entities_request("ingest", body.to_string());
+    let body = CreateRequest::with(payload.name.clone(), desc.clone());
+    let req  = entities_request("ingest", body);
     let resp = client.request(req)
         .await
         .unwrap();
+    
     let status = if resp.status() == StatusCode::OK {
         StatusCode::CREATED
     } else {
@@ -136,8 +137,8 @@ async fn delete_tag(
     Extension(client): Extension<Client>,
 ) -> StatusCode
 {
-    let body = TagRemove::from(id, true);
-    let req  = entities_request("ingest", body.to_string());
+    let body = RemoveRequest::with(id, true);
+    let req  = entities_request("ingest", body);
     let resp = client.request(req)
         .await
         .unwrap();
@@ -181,6 +182,7 @@ async fn dataset_by_id(
     let envelope = datasets::by_id(resp)
         .await
         .unwrap();
+    
     let status_code = if envelope.dataset.is_none() { 
         StatusCode::NOT_FOUND
     } else {
@@ -197,14 +199,17 @@ async fn dataset_add_tag(
 ) -> StatusCode
 {
     let body = tags::add_body(&id, &payload.tag);
+    println!("BODY: {body}");
     let req  = graphql_request(body);
     let resp = client.request(req)
         .await
         .unwrap();
+    println!("RESP: {:?}", resp);
     let status = resp.status();
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
         .unwrap();
+    println!("BYTES: {:?}", bytes);
     let result: DatasetTagResponse = serde_json::from_slice(&bytes).unwrap();
 
     if let Some(errors) = result.errors {
@@ -238,6 +243,7 @@ async fn dataset_remove_tag(
     let _bytes = hyper::body::to_bytes(resp.into_body())
         .await
         .unwrap();
+    
     if status == StatusCode::OK {
         StatusCode::NO_CONTENT
     } else {
@@ -275,14 +281,14 @@ fn graphql_request(data: String) -> Request<Body>
         .unwrap()
 }
 
-fn entities_request(action: &str, data: String) -> Request<Body>
+fn entities_request(action: &str, data: impl std::fmt::Display) -> Request<Body>
 {
     Request::builder()
         .method(Method::POST)
         .uri(format!("http://localhost:8080/entities?action={action}"))
         .header("X-DataHub-Actor", "urn:li:corpuser:datahub")
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(data))
+        .body(Body::from(data.to_string()))
         .unwrap()
 }
 

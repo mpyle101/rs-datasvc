@@ -3,14 +3,14 @@ use std::fmt;
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct TagCreate {
+pub struct CreateRequest {
     entity: Value,
 }
 
-impl TagCreate {
-    pub fn from(name: String, description: String) -> TagCreate
+impl CreateRequest {
+    pub fn with(name: String, description: String) -> CreateRequest
     {
-        TagCreate {
+        CreateRequest {
             entity: Value { 
                 value: Snapshot { 
                     snapshot: SnapshotValues {
@@ -30,7 +30,7 @@ impl TagCreate {
     }
 }
 
-impl fmt::Display for TagCreate {
+impl fmt::Display for CreateRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match serde_json::to_string(self) {
             Ok(s) => write!(f, "{s}"),

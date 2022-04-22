@@ -1,17 +1,18 @@
-mod tag_create;
-mod tag_remove;
+mod create;
+mod remove;
 
+use std::convert::From;
 use std::collections::HashMap;
 
 use axum::http::Response;
 use hyper::Body;
 use serde::{Serialize, Deserialize};
-use serde_json::{Result, json};
+use serde_json::Result;
 
 use crate::datahub as dh;
 
-pub use tag_create::TagCreate;
-pub use tag_remove::TagRemove;
+pub use create::CreateRequest;
+pub use remove::RemoveRequest;
 
 #[derive(Serialize)]
 pub struct Tags {
@@ -38,24 +39,26 @@ pub struct Paging {
     offset: i32,
 }
 
-impl TagEnvelope {
-    pub fn from_entity(e: &dh::TagEntity) -> TagEnvelope
+
+impl From<&dh::TagEntity> for TagEnvelope {
+    fn from(e: &dh::TagEntity) -> Self
     {
         TagEnvelope { 
-            tag: e.tag.as_ref().map(|tag| Tag::from_entity(&tag))
+            tag: e.tag.as_ref().map(|tag| Tag::from(tag))
         }
     }
-
-    fn from_tag(tag: &dh::Tag) -> TagEnvelope
+}
+impl From<&dh::Tag> for TagEnvelope {
+    fn from(tag: &dh::Tag) -> Self
     {
         TagEnvelope { 
-            tag: Some(Tag::from_entity(tag))
+            tag: Some(Tag::from(tag))
         }
     }
 }
 
-impl Tag {
-    fn from_entity(tag: &dh::Tag) -> Tag
+impl From<&dh::Tag> for Tag {
+    fn from(tag: &dh::Tag) -> Self
     {
         Tag {
             id: tag.urn.to_owned(),
@@ -74,7 +77,7 @@ pub async fn by_id(resp: Response<Body>) -> Result<TagEnvelope>
         .unwrap();
     let body: TagResponse = serde_json::from_slice(&bytes).unwrap();
 
-    Ok(TagEnvelope::from_entity(&body.data))
+    Ok(TagEnvelope::from(&body.data))
 }
 
 pub async fn by_query(resp: Response<Body>) -> Result<Tags>
@@ -92,70 +95,66 @@ pub async fn by_query(resp: Response<Body>) -> Result<Tags>
 
 pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
 {
-    let value = json!({
-        "query": format!(r#"mutation addTag {{
-            success: addTag(input: {{
-                tagUrn: "{tag_id}",
-                resourceUrn: "{rsrc_id}"
+    format!(r#"{{
+        "query": "mutation addTag {{
+            success: addTag(input: {{ 
+                tagUrn: \"{tag_id}\",
+                resourceUrn: \"{rsrc_id}\"
             }})
-        }}"#),
-        "variables": {}
-    });
-
-    format!("{value}")
+        }}",
+        "variables": {{}}
+    }}"#)
+    .replace("\n", "")
 }
 
 pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
 {
-    let value = json!({
-        "query": format!(r#"mutation removeTag {{
+    format!(r#"{{
+        "query": "mutation removeTag {{
             success: removeTag(input: {{ 
-                tagUrn: "{tag_id}",
-                resourceUrn: "{rsrc_id}"
+                tagUrn: \"{tag_id}\",
+                resourceUrn: \"{rsrc_id}\"
             }})
-        }}"#),
-        "variables": {}
-    });
-
-    format!("{value}")
+        }}",
+        "variables": {{}}
+    }}"#)
+    .replace("\n", "")
 }
 
 pub fn id_query_body(id: &str) -> String
 {
-    let value = json!({
-        "query": format!(r#"{{ 
-            tag(urn: "{id}") {{
+    format!(r#"{{
+        "query": "{{ 
+            tag(urn: \"{id}\") {{
                 urn
                 properties {{ 
                     name
                     description
                 }}
             }}
-        }}"#)
-    });
-
-    format!("{value}")
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
 pub fn params_query_body(params: HashMap<&str, &str>) -> String
 {
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
-    let value = match params.get("query") {
+
+    match params.get("query") {
         Some(query) => build_name_query(query, limit),
         None        => build_tags_query(start, limit),
-    };
-
-    format!("{value}")
+    }
 }
 
-fn build_name_query(query: &str, limit: &str) -> serde_json::Value
+fn build_name_query(query: &str, limit: &str) -> String
 {
-    json!({
-        "query": format!(r#"{{ 
+    format!(r#"{{
+        "query": "{{ 
             results: autoComplete(input: {{ 
                 type: TAG,
-                query: "*{query}*",
+                query: \"*{query}*\",
                 limit: {limit},
             }}) {{
                 __typename
@@ -170,17 +169,18 @@ fn build_name_query(query: &str, limit: &str) -> serde_json::Value
                     }}
                 }} 
             }}
-        }}"#)
-    })
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
-fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
+fn build_tags_query(start: &str, limit: &str) -> String
 {
-    json!({
-        "query": format!(r#"{{ 
+    format!(r#"{{
+        "query": "{{ 
             results: search(input: {{ 
                 type: TAG,
-                query: "*",
+                query: \"*\",
                 start: {start},
                 count: {limit},
             }}) {{
@@ -201,8 +201,9 @@ fn build_tags_query(start: &str, limit: &str) -> serde_json::Value
                     }}
                 }}
             }}
-        }}"#)
-    })
+        }}"
+    }}"#)
+    .replace("\n", "")
 }
 
 #[derive(Deserialize)]
@@ -254,13 +255,13 @@ impl QueryResults {
         match self {
             Self::AutoCompleteResults { entities } => {
                 entities.iter()
-                    .map(TagEnvelope::from_tag)
+                    .map(TagEnvelope::from)
                     .collect()
             },
             Self::SearchResults { entities, .. } => {
                 entities.iter()
                     .map(|e| &e.entity)
-                    .map(TagEnvelope::from_tag)
+                    .map(TagEnvelope::from)
                     .collect()
             },
         }
