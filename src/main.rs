@@ -199,17 +199,14 @@ async fn dataset_add_tag(
 ) -> StatusCode
 {
     let body = tags::add_body(&id, &payload.tag);
-    println!("BODY: {body}");
     let req  = graphql_request(body);
     let resp = client.request(req)
         .await
         .unwrap();
-    println!("RESP: {:?}", resp);
     let status = resp.status();
     let bytes = hyper::body::to_bytes(resp.into_body())
         .await
         .unwrap();
-    println!("BYTES: {:?}", bytes);
     let result: DatasetTagResponse = serde_json::from_slice(&bytes).unwrap();
 
     if let Some(errors) = result.errors {

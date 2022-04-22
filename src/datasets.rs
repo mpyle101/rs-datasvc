@@ -175,12 +175,14 @@ pub fn params_query_body(params: HashMap<&str, &str>) -> String
     let start = params.get("offset").unwrap_or(&"0");
     let limit = params.get("limit").unwrap_or(&"10");
 
-    if let Some(query) = params.get("query") {
-        build_name_query(query, limit)
+    if let Some(name) = params.get("name") {
+        build_name_query(name, limit)
     } else if let Some(tags) = params.get("tags") {
         build_tags_query(tags, start, limit)
+    } else if let Some(query) = params.get("query") {
+        build_datasets_query(query, start, limit)
     } else {
-        build_datasets_query(start, limit)
+        build_all_query(start, limit)
     }
 }
 
@@ -233,7 +235,32 @@ fn build_tags_query(
     .replace('\n', "")
 }
 
-fn build_datasets_query(start: &str, limit: &str) -> String
+fn build_datasets_query(query: &str, start: &str, limit: &str) -> String
+{
+    format!(r#"{{
+        "query": "{{ 
+            results: search(input: {{ 
+                type: DATASET,
+                query: \"*{query}*\",
+                start: {start},
+                count: {limit},
+            }}) {{
+                __typename
+                start
+                count
+                total
+                entities: searchResults {{
+                    entity {{
+                        {DATASET_QUERY}
+                    }}
+                }}
+            }}
+        }}"
+    }}"#)
+    .replace('\n', "")
+}
+
+fn build_all_query(start: &str, limit: &str) -> String
 {
     format!(r#"{{
         "query": "{{ 
@@ -293,7 +320,8 @@ struct SearchEntity {
 }
 
 impl QueryResults {
-    fn paging(&self) -> Option<Paging> {
+    fn paging(&self) -> Option<Paging>
+    {
         match self {
             Self::AutoCompleteResults { .. } => None,
             Self::SearchResults { start, count, total, .. } => {

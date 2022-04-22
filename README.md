@@ -3,10 +3,12 @@ Restful frontend to Datahub
   
 <pre>
 GET /tags                 => all tags (paged)
-GET /tags?query=blah      => tags with names like "blah" up to limit (default:10) 
+GET /tags?query=blah      => tags with any value like "blah" up to limit (default:10) 
+GET /tags?name=blah       => tags with names like "blah" up to limit (default:10) 
 GET /tags/:id             => tag with the specified id 
 GET /datasets             => all datasets (paged)  
-GET /datasets?query=blah  => datasets with names like "blah" up to limit (default:10)  
+GET /datasets?query=blah  => datasets with any value like "blah" up to limit (default:10)  
+GET /datasets?name=blah   => datasets with names like "blah" up to limit (default:10)  
 GET /datasets?tags=blah   => datasets with tags like "blah" (paged)  
 GET /datasets/:id         => dataset with the specified id
 
