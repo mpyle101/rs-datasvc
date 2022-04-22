@@ -228,7 +228,7 @@ fn build_tags_query(
                     }}
                 }}
             }}
-        }})
+        }}"
     }}"#)
     .replace('\n', "")
 }
