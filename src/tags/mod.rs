@@ -1,3 +1,6 @@
+mod tag_create;
+mod tag_remove;
+
 use std::collections::HashMap;
 
 use axum::http::Response;
@@ -6,6 +9,9 @@ use serde::{Serialize, Deserialize};
 use serde_json::{Result, json};
 
 use crate::datahub as dh;
+
+pub use tag_create::TagCreate;
+pub use tag_remove::TagRemove;
 
 #[derive(Serialize)]
 pub struct Tags {
@@ -102,7 +108,7 @@ pub fn add_body(rsrc_id: &str, tag_id: &str) -> String
 pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
 {
     let value = json!({
-        "query": format!(r#"mutation addTag {{
+        "query": format!(r#"mutation removeTag {{
             success: removeTag(input: {{ 
                 tagUrn: "{tag_id}",
                 resourceUrn: "{rsrc_id}"
@@ -112,34 +118,6 @@ pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
     });
 
     format!("{value}")
-}
-
-pub fn create_body(name: &str, desc: &str) -> String
-{
-    let value = CreateTag {
-        entity: TagValue { 
-            value: TagSnapshot { 
-                snapshot: TagData {
-                    urn: format!("urn:li:tag:{name}"),
-                    aspects: vec![
-                        TagAspect {
-                            properties: TagProperties {
-                                name: name.to_string(),
-                                description: desc.to_string(),
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    };
-    
-    serde_json::to_string(&value).unwrap()
-}
-
-pub fn delete_body(id: &str) -> String
-{
-    format!(r#"{{"urn": "{id}"}}"#)
 }
 
 pub fn id_query_body(id: &str) -> String
@@ -287,38 +265,4 @@ impl QueryResults {
             },
         }
     }
-}
-
-#[derive(Serialize)]
-struct CreateTag {
-    entity: TagValue,
-}
-
-#[derive(Serialize)]
-struct TagValue {
-    value: TagSnapshot,
-}
-
-#[derive(Serialize)]
-struct TagSnapshot {
-    #[serde(rename(serialize = "com.linkedin.metadata.snapshot.TagSnapshot"))]
-    snapshot: TagData,
-}
-
-#[derive(Serialize)]
-struct TagData {
-    urn: String,
-    aspects: Vec<TagAspect>,
-}
-
-#[derive(Serialize)]
-struct TagAspect {
-    #[serde(rename(serialize = "com.linkedin.tag.TagProperties"))]
-    properties: TagProperties,
-}
-
-#[derive(Serialize)]
-struct TagProperties {
-    name: String,
-    description: String,
 }

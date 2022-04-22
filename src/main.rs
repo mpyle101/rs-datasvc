@@ -2,6 +2,7 @@ mod datahub;
 mod datasets;
 mod tags;
 
+
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
@@ -20,6 +21,7 @@ use hyper::{
 use serde::Deserialize;
 
 use datahub as dh;
+use tags::{TagCreate, TagRemove};
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -110,8 +112,8 @@ async fn create_tag(
 ) -> impl IntoResponse
 {
     let desc = payload.description.unwrap_or_else(|| "".to_string());
-    let body = tags::create_body(&payload.name, &desc);
-    let req  = entities_request("ingest", body);
+    let body = TagCreate::from(payload.name.clone(), desc.clone());
+    let req  = entities_request("ingest", body.to_string());
     let resp = client.request(req)
         .await
         .unwrap();
@@ -125,7 +127,7 @@ async fn create_tag(
     (status, Json(tags::Tag {
         id: format!("urn:li:tag:{name}"),
         name: Some(name),
-        description: Some(desc.to_owned()),
+        description: Some(desc),
     }))
 }
 
@@ -134,11 +136,12 @@ async fn delete_tag(
     Extension(client): Extension<Client>,
 ) -> StatusCode
 {
-    let body = tags::delete_body(&id);
-    let req  = entities_request("delete", body);
+    let body = TagRemove::from(id, true);
+    let req  = entities_request("ingest", body.to_string());
     let resp = client.request(req)
         .await
         .unwrap();
+
     if resp.status() == StatusCode::OK {
         StatusCode::NO_CONTENT
     } else {
