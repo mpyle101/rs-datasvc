@@ -9,37 +9,8 @@ use serde_json::Result;
 use crate::datahub as dh;
 use crate::tags;
 
-const DATASET_QUERY: &str = "
-    urn
-    __typename
-    ... on Dataset {
-        name
-        properties {
-            name
-        }
-        schema: schemaMetadata {
-            fields {
-                path: fieldPath
-                class: type
-                native: nativeDataType
-            }
-        }
-        sub_types: subTypes {
-            names: typeNames
-        }
-        tags {
-            tags {
-                tag {
-                    urn
-                    properties {
-                        name
-                        description
-                    }
-                }
-            }
-        }
-    }
-";
+const DATASET_QUERY: &str = dh::DATASET_QUERY;
+
 
 #[derive(Serialize)]
 pub struct Datasets {
@@ -57,6 +28,14 @@ pub struct Dataset {
     id: String,
     path: String,
     name: Option<String>,
+    origin: Option<String>,
+    platform: Option<String>,
+
+    #[serde(rename(serialize = "platformType"))]
+    platform_type: Option<String>,
+
+    #[serde(rename(serialize = "platformName"))]
+    platform_name: Option<String>,
 
     #[serde(rename(serialize = "type"))]
     class: Option<String>,
@@ -118,9 +97,17 @@ impl From<&dh::Dataset> for Dataset {
             id: e.urn.to_owned(),
             path: e.name.to_owned(),
             name: e.properties.as_ref()
-                .map(|props| props.name.to_owned()),
+                .map(|p| p.name.to_owned()),
             class: e.sub_types.as_ref()
                 .map(|st| st.names[0].to_owned()),
+            origin: e.properties.as_ref()
+                .map(|p| p.origin.to_owned()),
+            platform: e.platform.as_ref()
+                .map(|p| p.name.to_owned()),
+            platform_name: e.platform.as_ref()
+                .map(|p| p.properties.name.to_owned()),
+            platform_type: e.platform.as_ref()
+                .map(|p| p.properties.class.to_owned()),
             tags: e.tags.as_ref()
                 .map_or_else(Vec::new, |tags| tags.tags.iter()
                     .map(tags::TagEnvelope::from)
@@ -161,11 +148,7 @@ pub async fn by_query(resp: Response<Body>) -> Result<Datasets>
 pub fn id_query_body(id: &str) -> String
 {
     format!(r#"{{
-        "query": "{{ 
-            dataset(urn: \"{id}\") {{
-                {DATASET_QUERY}
-            }}
-        }}"
+        "query": "{{ dataset(urn: \"{id}\") {{ {DATASET_QUERY} }} }}"
     }}"#)
     .replace('\n', "")
 }
@@ -191,14 +174,10 @@ fn build_name_query(query: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: autoComplete(input: {{ 
-                type: DATASET,
-                query: \"*{query}*\",
-                limit: {limit},
+                type: DATASET, query: \"*{query}*\", limit: {limit},
             }}) {{
                 __typename
-                entities {{
-                    {DATASET_QUERY}
-                }}
+                entities {{ {DATASET_QUERY} }}
             }}
         }}"
     }}"#)
@@ -215,20 +194,10 @@ fn build_tags_query(
     format!(r#"{{
         "query": "{{ 
             results: search(input: {{ 
-                type: DATASET,
-                query: \"tags:{query}\",
-                start: {start},
-                count: {limit},
+                type: DATASET, query: \"tags:{query}\", start: {start}, count: {limit},
             }}) {{
-                __typename
-                start,
-                count,
-                total,
-                entities: searchResults {{
-                    entity {{
-                        {DATASET_QUERY}
-                    }}
-                }}
+                __typename start count total
+                entities: searchResults {{ entity {{ {DATASET_QUERY} }} }}
             }}
         }}"
     }}"#)
@@ -240,20 +209,10 @@ fn build_datasets_query(query: &str, start: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: search(input: {{ 
-                type: DATASET,
-                query: \"*{query}*\",
-                start: {start},
-                count: {limit},
+                type: DATASET, query: \"*{query}*\", start: {start}, count: {limit},
             }}) {{
-                __typename
-                start
-                count
-                total
-                entities: searchResults {{
-                    entity {{
-                        {DATASET_QUERY}
-                    }}
-                }}
+                __typename start count total
+                entities: searchResults {{ entity {{ {DATASET_QUERY} }} }}
             }}
         }}"
     }}"#)
@@ -265,20 +224,10 @@ fn build_all_query(start: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: search(input: {{ 
-                type: DATASET,
-                query: \"*\",
-                start: {start},
-                count: {limit},
+                type: DATASET, query: \"*\", start: {start}, count: {limit},
             }}) {{
-                __typename
-                start
-                count
-                total
-                entities: searchResults {{
-                    entity {{
-                        {DATASET_QUERY}
-                    }}
-                }}
+                __typename start count total
+                entities: searchResults {{ entity {{ {DATASET_QUERY} }} }}
             }}
         }}"
     }}"#)

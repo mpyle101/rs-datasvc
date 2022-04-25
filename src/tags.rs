@@ -14,6 +14,19 @@ use crate::datahub as dh;
 pub use create::CreateRequest;
 pub use remove::RemoveRequest;
 
+const DATASET_QUERY: &str = dh::DATASET_QUERY;
+const TAG_QUERY: &str = "
+    urn
+    __typename
+    ... on Tag {
+        urn
+        properties {
+            name
+            description
+        }
+    }
+";
+
 #[derive(Serialize)]
 pub struct Tags {
     data: Vec<TagEnvelope>,
@@ -124,13 +137,24 @@ pub fn remove_body(rsrc_id: &str, tag_id: &str) -> String
 pub fn id_query_body(id: &str) -> String
 {
     format!(r#"{{
+        "query": "{{ tag(urn: \"{id}\") {{ {TAG_QUERY} }} }}"
+    }}"#)
+    .replace('\n', "")
+}
+
+pub fn datasets_query_body(id: &str, params: HashMap<&str, &str>) -> String
+{
+    let start = params.get("offset").unwrap_or(&"0");
+    let limit = params.get("limit").unwrap_or(&"10");
+
+    format!(r#"{{
         "query": "{{ 
-            tag(urn: \"{id}\") {{
-                urn
-                properties {{ 
-                    name
-                    description
-                }}
+            results: search(input: {{ 
+                type: DATASET, query: \"*\", start: {start}, count: {limit},
+                filters: {{ field: \"tags\", value: \"{id}\" }}
+            }}) {{
+                __typename start count total
+                entities: searchResults {{ entity {{ {DATASET_QUERY} }} }}
             }}
         }}"
     }}"#)
@@ -156,21 +180,10 @@ fn build_name_query(query: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: autoComplete(input: {{ 
-                type: TAG,
-                query: \"*{query}*\",
-                limit: {limit},
+                type: TAG, query: \"*{query}*\", limit: {limit},
             }}) {{
                 __typename
-                entities {{ 
-                    urn
-                    ... on Tag {{
-                        urn
-                        properties {{ 
-                            name
-                            description
-                        }}
-                    }}
-                }} 
+                entities {{ {TAG_QUERY} }} 
             }}
         }}"
     }}"#)
@@ -182,27 +195,10 @@ fn build_tags_query(query: &str, start: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: search(input: {{ 
-                type: TAG,
-                query: \"*{query}\",
-                start: {start},
-                count: {limit},
+                type: TAG, query: \"*{query}\", start: {start}, count: {limit},
             }}) {{
-                __typename
-                start
-                count
-                total
-                entities: searchResults {{
-                    entity {{
-                        urn
-                        ... on Tag {{
-                            urn
-                            properties {{ 
-                                name
-                                description
-                            }}
-                        }}
-                    }}
-                }}
+                __typename start count total
+                entities: searchResults {{ entity {{ {TAG_QUERY} }} }}
             }}
         }}"
     }}"#)
@@ -214,27 +210,10 @@ fn build_all_query(start: &str, limit: &str) -> String
     format!(r#"{{
         "query": "{{ 
             results: search(input: {{ 
-                type: TAG,
-                query: \"*\",
-                start: {start},
-                count: {limit},
+                type: TAG, query: \"*\", start: {start}, count: {limit},
             }}) {{
-                __typename
-                start
-                count
-                total
-                entities: searchResults {{
-                    entity {{
-                        urn
-                        ... on Tag {{
-                            urn
-                            properties {{ 
-                                name
-                                description
-                            }}
-                        }}
-                    }}
-                }}
+                __typename start count total
+                entities: searchResults {{ entity {{ {TAG_QUERY} }} }}
             }}
         }}"
     }}"#)

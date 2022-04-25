@@ -1,5 +1,6 @@
 mod datahub;
 mod datasets;
+mod platforms;
 mod tags;
 
 
@@ -36,13 +37,17 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
                 .post(create_tag)
         )
         .route("/tags/:id", 
-            get(tags_by_id)
+            get(tag_by_id)
                 .delete(delete_tag)
         )
+        .route("/tags/:id/datasets", get(datasets_by_tag))
         .route("/datasets", get(datasets_by_query))
         .route("/datasets/:id", get(dataset_by_id))
         .route("/datasets/:id/tags", post(dataset_add_tag))
         .route("/datasets/:id/tags/:tid", delete(dataset_remove_tag))
+        .route("/platforms", get(platforms_by_query))
+        .route("/platforms/:id", get(platform_by_id))
+        .route("/platforms/:id/datasets", get(datasets_by_platform))
         .layer(Extension(Client::new()))
         .fallback(not_found.into_service());
 
@@ -70,7 +75,45 @@ async fn root() -> Html<&'static str>
     "<h1>Alteryx Data Service is alive!</h1>".into()
 }
 
-async fn tags_by_id(
+async fn platform_by_id(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+) -> Json<platforms::PlatformEnvelope>
+{
+    let body = platforms::id_query_body(&id);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = platforms::by_id(resp)
+        .await
+        .unwrap();
+
+    results.into()
+}
+
+async fn platforms_by_query(
+    Extension(client): Extension<Client>,
+    req: Request<Body>
+) -> Json<platforms::Platforms>
+{
+    let mut params: HashMap<_, _> = req.uri().query()
+        .map_or_else(HashMap::new, parse_query);
+    params.insert("user", "urn:li:corpuser:datahub");
+
+    let body = platforms::params_query_body(params);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = platforms::by_query(resp)
+        .await
+        .unwrap();
+
+    results.into()
+}
+
+async fn tag_by_id(
     Path(id): Path<String>,
     Extension(client): Extension<Client>,
 ) -> Json<tags::TagEnvelope>
@@ -190,6 +233,46 @@ async fn dataset_by_id(
     };
 
     (status_code, envelope.into())
+}
+
+async fn datasets_by_platform(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+    req: Request<Body>
+) -> Json<datasets::Datasets>
+{
+    let params: HashMap<_, _> = req.uri().query()
+        .map_or_else(HashMap::new, parse_query);
+    let body = platforms::datasets_query_body(&id, params);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = datasets::by_query(resp)
+        .await
+        .unwrap();
+
+    results.into()
+}
+
+async fn datasets_by_tag(
+    Path(id): Path<String>,
+    Extension(client): Extension<Client>,
+    req: Request<Body>
+) -> Json<datasets::Datasets>
+{
+    let params: HashMap<_, _> = req.uri().query()
+        .map_or_else(HashMap::new, parse_query);
+    let body = tags::datasets_query_body(&id, params);
+    let req  = graphql_request(body);
+    let resp = client.request(req)
+        .await
+        .unwrap();
+    let results = datasets::by_query(resp)
+        .await
+        .unwrap();
+
+    results.into()
 }
 
 async fn dataset_add_tag(
