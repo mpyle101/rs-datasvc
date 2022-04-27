@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     Json, Router,
     extract::{Extension, Path},
@@ -24,7 +22,11 @@ use crate::schemas::{
     ListRecommendationsResponse
 };
 
-use crate::api::v1::{queries, datasets::QUERY_VALUES as DATASET_VALUES};
+use crate::api::v1::{
+    queries,
+    datasets::QUERY_VALUES as DATASET_VALUES,
+    QueryParams
+};
 
 const QUERY_VALUES: &str = "
     urn
@@ -101,17 +103,13 @@ async fn datasets_by_platform(
     req: Request<Body>
 ) -> Json<schemas::Datasets>
 {
-    let params: HashMap<_, _> = req.uri().query()
-        .map_or_else(HashMap::new, parse_query);
-    let start = params.get("offset").unwrap_or(&"0");
-    let limit = params.get("limit").unwrap_or(&"10");
-
+    let params = QueryParams::from(&req);
     let variables = Variables::SearchInput(
         SearchInput::new(
             "DATASET",
             "*".into(),
-            start.parse::<i32>().unwrap(),
-            limit.parse::<i32>().unwrap(),
+            params.start,
+            params.limit,
             Some(Filter::new("platform".into(), id))
         )
     );
@@ -126,18 +124,4 @@ async fn datasets_by_platform(
     let body: QueryResponse = serde_json::from_slice(&bytes).unwrap();
 
     Datasets::from(&body).into()
-}
-
-fn parse_query(query: &str) -> HashMap<&str, &str>
-{
-    query.split('&')
-        .map(|s| s.split('='))
-        .map(|mut v| {
-            let key = v.next().unwrap();
-            match v.next() {
-                Some(val) => (key, val),
-                None => ("query", key)
-            }
-        })
-        .collect()
 }

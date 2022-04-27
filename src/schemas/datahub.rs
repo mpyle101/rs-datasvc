@@ -178,7 +178,7 @@ pub struct CreateTag {
 }
 
 impl CreateTag {
-    pub fn with(name: String, description: String) -> CreateTag
+    pub fn new(name: String, description: String) -> CreateTag
     {
         CreateTag {
             entity: Value { 

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     Json, Router,
     extract::{Extension, Path},
@@ -28,7 +26,11 @@ use crate::schemas::{
     QueryResponse
 };
 
-use crate::api::v1::{queries, datasets::QUERY_VALUES as DATASET_VALUES};
+use crate::api::v1::{
+    queries,
+    datasets::QUERY_VALUES as DATASET_VALUES,
+    QueryParams
+};
 
 const QUERY_VALUES: &str = "
     urn
@@ -90,31 +92,27 @@ async fn by_query(
     req: Request<Body>
 ) -> Json<schemas::Tags>
 {
-    let params: HashMap<_, _> = req.uri().query()
-        .map_or_else(HashMap::new, parse_query);
-    let start = params.get("offset").unwrap_or(&"0");
-    let limit = params.get("limit").unwrap_or(&"10");
-
-    let (query, variables) = if let Some(query) = params.get("name") {
+    let params = QueryParams::from(&req);
+    let (query, variables) = if let Some(query) = params.name {
         (
             &*QUERY_BY_QUERY,
             Variables::AutoCompleteInput(
                 AutoCompleteInput::new(
                     "TAG",
                     query.to_string(),
-                    limit.parse::<i32>().unwrap()
+                    params.limit
                 )
             )
         )
-    } else if let Some(query) = params.get("query") {
+    } else if let Some(query) = params.query {
         (
             &*QUERY_BY_NAME,
             Variables::SearchInput(
                 SearchInput::new(
                     "TAG",
                     format!("*{query}*"),
-                    start.parse::<i32>().unwrap(),
-                    limit.parse::<i32>().unwrap(),
+                    params.start,
+                    params.limit,
                     None
                 )
             )
@@ -126,8 +124,8 @@ async fn by_query(
                 SearchInput::new(
                     "TAG",
                     "*".into(),
-                    start.parse::<i32>().unwrap(),
-                    limit.parse::<i32>().unwrap(),
+                    params.start,
+                    params.limit,
                     None
                 )
             )
@@ -152,17 +150,13 @@ async fn datasets_by_tag(
     req: Request<Body>
 ) -> Json<schemas::Datasets>
 {
-    let params: HashMap<_, _> = req.uri().query()
-        .map_or_else(HashMap::new, parse_query);
-    let start = params.get("offset").unwrap_or(&"0");
-    let limit = params.get("limit").unwrap_or(&"10");
-
+    let params = QueryParams::from(&req);
     let variables = Variables::SearchInput(
         SearchInput::new(
             "DATASET",
             "*".into(),
-            start.parse::<i32>().unwrap(),
-            limit.parse::<i32>().unwrap(),
+            params.start,
+            params.limit,
             Some(Filter::new("tags".into(), id))
         )
     );
@@ -185,7 +179,7 @@ async fn create_tag(
 ) -> impl IntoResponse
 {
     let desc = payload.description.unwrap_or_else(|| "".to_string());
-    let body = CreateTag::with(payload.name.clone(), desc.clone());
+    let body = CreateTag::new(payload.name.clone(), desc.clone());
     let resp = post(&client, INGEST_ENDPOINT, body)
         .await
         .unwrap();
@@ -217,18 +211,4 @@ async fn delete_tag(
     } else {
         StatusCode::INTERNAL_SERVER_ERROR
     }
-}
-
-fn parse_query(query: &str) -> HashMap<&str, &str>
-{
-    query.split('&')
-        .map(|s| s.split('='))
-        .map(|mut v| {
-            let key = v.next().unwrap();
-            match v.next() {
-                Some(val) => (key, val),
-                None => ("query", key)
-            }
-        })
-        .collect()
 }
