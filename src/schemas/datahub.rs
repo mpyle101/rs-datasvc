@@ -187,10 +187,8 @@ impl CreateTag {
                         urn: format!("urn:li:tag:{name}"),
                         aspects: vec![
                             Aspect::Properties {
-                                aspect: Properties {
-                                    name,
-                                    description,
-                                }
+                                name,
+                                description,
                             }
                         ]
                     }
@@ -224,9 +222,7 @@ impl DeleteTag {
                         urn,
                         aspects: vec![
                             Aspect::Status {
-                                aspect: Status {
-                                    removed: true
-                                }
+                                removed: true
                             }
                         ]
                     }
@@ -276,29 +272,14 @@ struct Properties {
 #[derive(Serialize)]
 enum Aspect {
     #[serde(rename(serialize = "com.linkedin.common.Status"))]
-    Status {
-        aspect: Status
-    },
+    Status { removed: bool },
     
     #[serde(rename(serialize = "com.linkedin.tag.TagProperties"))]
     Properties {
-        aspect: Properties,
+        name: String,
+        description: String
     }
 }
-
-/*
-#[derive(Serialize)]
-struct Aspect {
-    #[serde(rename(serialize = "com.linkedin.common.Status"))]
-    aspect: Status,
-}
-
-#[derive(Serialize)]
-struct Aspect {
-    #[serde(rename(serialize = "com.linkedin.tag.TagProperties"))]
-    aspect: Properties,
-}
-*/
 
 
 #[derive(Deserialize)]
@@ -317,7 +298,7 @@ struct RecommendationsModules {
 }
 
 #[derive(Deserialize)]
-#[serde(tag = "moduleId")]
+#[serde(tag = "id")]
 enum RecommendationsModule {
     Platforms { 
         content: Vec<PlatformEntity>
@@ -329,11 +310,12 @@ enum RecommendationsModule {
 
 #[derive(Deserialize)]
 pub struct PlatformEntity {
-    pub entity: PlatformData,
+    #[serde(rename(deserialize = "dataPlatform"))]
+    pub platform: DataPlatform,
 }
 
 #[derive(Deserialize)]
-pub struct PlatformData {
+pub struct DataPlatform {
     pub urn: String,
     pub name: String,
     pub properties: PlatformProperties

@@ -35,10 +35,10 @@ impl From<&datahub::PlatformEntity> for Platform {
     fn from(e: &datahub::PlatformEntity) -> Self
     {
         Platform {
-            id: e.entity.urn.to_owned(),
-            name: e.entity.name.to_owned(),
-            title: e.entity.properties.name.to_owned(),
-            class: e.entity.properties.class.to_owned(),
+            id: e.platform.urn.to_owned(),
+            name: e.platform.name.to_owned(),
+            title: e.platform.properties.name.to_owned(),
+            class: e.platform.properties.class.to_owned(),
         }
     }
 }

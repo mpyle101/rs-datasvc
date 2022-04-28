@@ -5,7 +5,7 @@ pub fn by_id(entity: &str, values: &str) -> String
         query by_id($urn: String!) {{
             {entity}(urn: $urn) {{ {values} }}
         }}
-    "#).replace("\n", "")
+    "#).replace("\n", "").replace("  ", " ")
 }
 
 pub fn by_name(values: &str) -> String
@@ -17,7 +17,7 @@ pub fn by_name(values: &str) -> String
                 entities {{ {values} }}
             }}
         }}
-    "#).replace("\n", "")
+    "#).replace("\n", "").replace("  ", " ")
 }
 
 pub fn by_query(values: &str) -> String
@@ -29,14 +29,14 @@ pub fn by_query(values: &str) -> String
                 entities: searchResults {{ entity {{ {values} }} }}
             }}
         }}
-    "#).replace("\n", "")
+    "#).replace("\n", "").replace("  ", " ")
 }
 
 pub fn add_tag() -> String
 {
     "mutation add_tag($input: TagAssociationInput!) {
         success: addTag(input: $input)
-    }".replace("\n", "")
+    }".replace("\n", "").replace("  ", " ")
 }
 
 pub fn remove_tag() -> String
@@ -57,5 +57,5 @@ pub fn platforms(values: &str) -> String
                 }}
             }}
         }}
-    "#).replace("\n", "")
+    "#).replace("\n", "").replace("  ", " ")
 }

@@ -29,7 +29,7 @@ use crate::schemas::{
 use crate::api::v1::{
     queries,
     datasets::QUERY_VALUES as DATASET_VALUES,
-    QueryParams
+    params::QueryParams
 };
 
 const QUERY_VALUES: &str = "
@@ -183,7 +183,7 @@ async fn create_tag(
     let resp = post(&client, INGEST_ENDPOINT, body)
         .await
         .unwrap();
-    
+
     let status = if resp.status() == StatusCode::OK {
         StatusCode::CREATED
     } else {

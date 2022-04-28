@@ -25,7 +25,7 @@ use crate::schemas::{
 use crate::api::v1::{
     queries,
     datasets::QUERY_VALUES as DATASET_VALUES,
-    QueryParams
+    params::QueryParams
 };
 
 const QUERY_VALUES: &str = "
@@ -79,12 +79,13 @@ async fn by_id(
 
 async fn by_query(
     Extension(client): Extension<Client>,
+    req: Request<Body>
 ) -> Json<schemas::Platforms>
 {
+    let params = QueryParams::from(&req);
     let variables = Variables::ListRecommendationsInput(
-        ListRecommendationsInput::new("urn:li:corpuser:datahub".into())
+        ListRecommendationsInput::new("urn:li:corpuser:datahub".into(), params.limit)
     );
-
     let body = GraphQL::new(ALL_PLATFORMS.to_owned(), variables);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await

@@ -8,28 +8,41 @@ pub struct GraphQL {
 
 #[derive(Serialize)]
 pub enum Variables {
+    #[serde(rename = "urn")]
     Urn(String),
+
+    #[serde(rename = "input")]
     SearchInput(SearchInput),
+
+    #[serde(rename = "input")]
     AutoCompleteInput(AutoCompleteInput),
+
+    #[serde(rename = "input")]
     TagAssociationInput(TagAssociationInput),
+
+    #[serde(rename = "input")]
     ListRecommendationsInput(ListRecommendationsInput),
 }
 
 #[derive(Serialize)]
 pub struct AutoCompleteInput {
+    limit: i32,
+    query: String,
+
     #[serde(rename = "type")]
     class: String,
-    query: String,
-    limit: i32,
 }
 
 #[derive(Serialize)]
 pub struct SearchInput {
+    start: i32,
+    count: i32,
+    query: String,
+
     #[serde(rename = "type")]
     class: String,
-    query: String,
-    start: i32,
-    limit: i32,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     filters: Option<Filter>,
 }
 
@@ -50,6 +63,8 @@ pub struct TagAssociationInput {
 
 #[derive(Serialize)]
 pub struct ListRecommendationsInput {
+    limit: i32,
+
     #[serde(rename(serialize = "userUrn"))]
     user: String,
 
@@ -90,11 +105,11 @@ impl SearchInput {
         class: String,
         query: String,
         start: i32,
-        limit: i32,
+        count: i32,
         filters: Option<Filter>
     ) -> SearchInput
     {
-        SearchInput { class, query, start, limit, filters }
+        SearchInput { class, query, start, count, filters }
     }
 }
 
@@ -113,10 +128,11 @@ impl TagAssociationInput {
 }
 
 impl ListRecommendationsInput {
-    pub fn new(user: String) -> ListRecommendationsInput
+    pub fn new(user: String, limit: i32) -> ListRecommendationsInput
     {
         ListRecommendationsInput {
             user,
+            limit,
             context: RequestContext { 
                 scenario: "HOME".into()
             }
