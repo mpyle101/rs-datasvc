@@ -63,12 +63,9 @@ struct RequestContext {
 }
 
 impl GraphQL {
-    pub fn new(query: &str, vars: Variables) -> GraphQL
+    pub fn new(query: String, vars: Variables) -> GraphQL
     {
-        GraphQL {
-            query: query.to_string(),
-            variables: vars
-        }
+        GraphQL { query, variables: vars }
     }
 }
 
@@ -82,32 +79,22 @@ impl std::fmt::Display for GraphQL {
 }
 
 impl AutoCompleteInput {
-    pub fn new(class: &str, query: String, limit: i32) -> AutoCompleteInput
+    pub fn new(class: String, query: String, limit: i32) -> AutoCompleteInput
     {
-        AutoCompleteInput { 
-            class: class.to_string(),
-            query,
-            limit
-        }
+        AutoCompleteInput { class, query, limit }
     }
 }
 
 impl SearchInput {
     pub fn new(
-        class: &str,
+        class: String,
         query: String,
         start: i32,
         limit: i32,
         filters: Option<Filter>
     ) -> SearchInput
     {
-        SearchInput { 
-            class: class.to_string(), 
-            query, 
-            start,
-            limit,
-            filters
-        }
+        SearchInput { class, query, start, limit, filters }
     }
 }
 

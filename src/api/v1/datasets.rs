@@ -92,7 +92,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<DatasetEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
+    let body = GraphQL::new(QUERY_BY_ID.to_owned(), Variables::Urn(id));
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -112,21 +112,21 @@ async fn by_query(
     let params = QueryParams::from(&req);
     let (query, variables) = if let Some(query) = params.name {
         (
-            &*QUERY_BY_QUERY,
+            QUERY_BY_QUERY.to_owned(),
             Variables::AutoCompleteInput(
                 AutoCompleteInput::new(
-                    "DATASET",
-                    query.to_string(),
+                    "DATASET".into(),
+                    query.to_owned(),
                     params.limit
                 )
             )
         )
     } else if let Some(query) = params.query {
         (
-            &*QUERY_BY_NAME,
+            QUERY_BY_NAME.to_owned(),
             Variables::SearchInput(
                 SearchInput::new(
-                    "DATASET",
+                    "DATASET".into(),
                     format!("*{query}*"),
                     params.start,
                     params.limit,
@@ -136,10 +136,10 @@ async fn by_query(
         )
     } else if let Some(query) = params.tags {
         (
-            &*QUERY_BY_NAME,
+            QUERY_BY_NAME.to_owned(),
             Variables::SearchInput(
                 SearchInput::new(
-                    "DATASET",
+                    "DATASET".into(),
                     format!("tags:{query}"),
                     params.start,
                     params.limit,
@@ -149,10 +149,10 @@ async fn by_query(
         )
     } else {
         (
-            &*QUERY_BY_QUERY,
+            QUERY_BY_QUERY.to_owned(),
             Variables::SearchInput(
                 SearchInput::new(
-                    "DATASET",
+                    "DATASET".into(),
                     "*".into(),
                     params.start,
                     params.limit,
@@ -183,7 +183,7 @@ async fn add_tag(
     let variables = Variables::TagAssociationInput(
         TagAssociationInput::new(id, payload.tag)
     );
-    let body = GraphQL::new(&*ADD_TAG, variables);
+    let body = GraphQL::new(ADD_TAG.to_owned(), variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -218,7 +218,7 @@ async fn remove_tag(
     let variables = Variables::TagAssociationInput(
         TagAssociationInput::new(id, tag_id)
     );
-    let body = GraphQL::new(&*REMOVE_TAG, variables);
+    let body = GraphQL::new(REMOVE_TAG.to_owned(), variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

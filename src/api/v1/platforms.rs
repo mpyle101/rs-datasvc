@@ -65,7 +65,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<PlatformEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
+    let body = GraphQL::new(QUERY_BY_ID.to_owned(), Variables::Urn(id));
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -85,7 +85,7 @@ async fn by_query(
         ListRecommendationsInput::new("urn:li:corpuser:datahub".into())
     );
 
-    let body = GraphQL::new(&*ALL_PLATFORMS, variables);
+    let body = GraphQL::new(ALL_PLATFORMS.to_owned(), variables);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -106,7 +106,7 @@ async fn datasets_by_platform(
     let params = QueryParams::from(&req);
     let variables = Variables::SearchInput(
         SearchInput::new(
-            "DATASET",
+            "DATASET".into(),
             "*".into(),
             params.start,
             params.limit,
@@ -114,7 +114,7 @@ async fn datasets_by_platform(
         )
     );
 
-    let body = GraphQL::new(&*DATASETS_BY_PLATFORM, variables);
+    let body = GraphQL::new(DATASETS_BY_PLATFORM.to_owned(), variables);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

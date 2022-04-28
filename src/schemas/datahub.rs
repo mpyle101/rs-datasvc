@@ -215,7 +215,7 @@ pub struct DeleteTag {
 }
 
 impl DeleteTag {
-    pub fn with(urn: String) -> DeleteTag
+    pub fn new(urn: String) -> DeleteTag
     {
         DeleteTag {
             entity: Value { 
