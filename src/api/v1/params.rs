@@ -4,11 +4,15 @@ use std::collections::HashMap;
 use axum::http::Request;
 use hyper::Body;
 
+pub enum QueryType<'a> {
+    All,
+    Name(&'a str),
+    Tags(&'a str),
+    Query(&'a str),
+}
 
 pub struct QueryParams<'a> {
-    pub name: Option<&'a str>,
-    pub tags: Option<&'a str>,
-    pub query: Option<&'a str>,
+    pub query: QueryType<'a>,
     pub limit: i32,
     pub start: i32, 
 }
@@ -22,13 +26,17 @@ impl<'a> From<&'a Request<Body>> for QueryParams<'a> {
         let limit = params.get("limit").map_or(10, |s| s.parse::<i32>().unwrap());
         let start = params.get("offset").map_or(0, |s| s.parse::<i32>().unwrap());
 
-        QueryParams {
-            limit,
-            start,
-            name: params.get("name").copied(),
-            tags: params.get("tags").copied(),
-            query: params.get("query").copied(),
-        }
+        let query = if let Some(query) = params.get("query") {
+            QueryType::Query(query)
+        } else if let Some(name) = params.get("name") {
+            QueryType::Name(name)
+        } else if let Some(tags) = params.get("tags") {
+            QueryType::Tags(tags)
+        } else {
+            QueryType::All
+        };
+
+        QueryParams { query, start, limit }
     }
 }
 

@@ -29,7 +29,7 @@ use crate::schemas::{
 use crate::api::v1::{
     queries,
     datasets::QUERY_VALUES as DATASET_VALUES,
-    params::QueryParams
+    params::{QueryParams, QueryType}
 };
 
 const QUERY_VALUES: &str = "
@@ -95,31 +95,30 @@ async fn by_query(
 {
     let tmp: String;
     let params = QueryParams::from(&req);
-    let (query, variables) = if let Some(query) = params.name {
-        (
-            &*QUERY_BY_QUERY,
-            Variables::AutoCompleteInput(
-                AutoCompleteInput::new("TAG", query, params.limit)
-            )
-        )
-    } else if let Some(query) = params.query {
-        tmp = format!("*{query}*");
-        (
-            &*QUERY_BY_NAME,
-            Variables::SearchInput(
-                SearchInput::new("TAG", &tmp, params.start, params.limit, None)
-            )
-        )
-    } else {
-        (
+    let body = match params.query {
+        QueryType::All => GraphQL::new(
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new("TAG", "*", params.start, params.limit, None)
             )
-        )
+        ),
+        QueryType::Name(name) => GraphQL::new(
+            &*QUERY_BY_NAME,
+            Variables::AutoCompleteInput(
+                AutoCompleteInput::new("TAG", name, params.limit)
+            )
+        ),
+        QueryType::Query(query) => {
+            tmp = format!("*{query}*");
+            GraphQL::new(
+                &*QUERY_BY_QUERY,
+                Variables::SearchInput(
+                    SearchInput::new("TAG", &tmp, params.start, params.limit, None)
+                )
+            )
+        },
+        QueryType::Tags(..) => panic!("?tags not supported")
     };
-
-    let body = GraphQL::new(query, variables);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

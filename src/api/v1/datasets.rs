@@ -23,7 +23,7 @@ use crate::schemas::{
     QueryResponse,
 };
 
-use crate::api::v1::{queries, params::QueryParams};
+use crate::api::v1::{queries, params::{QueryParams, QueryType}};
 
 pub const QUERY_VALUES: &str = "
     urn
@@ -112,39 +112,38 @@ async fn by_query(
 {
     let tmp: String;
     let params = QueryParams::from(&req);
-    let (query, variables) = if let Some(query) = params.name {
-        (
-            &*QUERY_BY_NAME,
-            Variables::AutoCompleteInput(
-                AutoCompleteInput::new("DATASET", query, params.limit)
-            )
-        )
-    } else if let Some(query) = params.query {
-        tmp = format!("*{query}*");
-        (
-            &*QUERY_BY_QUERY,
-            Variables::SearchInput(
-                SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
-            )
-        )
-    } else if let Some(query) = params.tags {
-        tmp = format!("tags:{query}");
-        (
-            &*QUERY_BY_QUERY,
-            Variables::SearchInput(
-                SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
-            )
-        )
-    } else {
-        (
+    let body = match params.query {
+        QueryType::All => GraphQL::new(
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new("DATASET", "*", params.start, params.limit, None)
             )
-        )
+        ),
+        QueryType::Name(name) => GraphQL::new(
+            &*QUERY_BY_NAME,
+            Variables::AutoCompleteInput(
+                AutoCompleteInput::new("DATASET", name, params.limit)
+            )
+        ),
+        QueryType::Tags(tags) => {
+            tmp = format!("tags:{tags}");
+            GraphQL::new(
+                &*QUERY_BY_QUERY,
+                Variables::SearchInput(
+                    SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
+                )
+            )
+        },
+        QueryType::Query(query) => {
+            tmp = format!("*{query}*");
+            GraphQL::new(
+                &*QUERY_BY_QUERY,
+                Variables::SearchInput(
+                    SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
+                )
+            )
+        },
     };
-
-    let body = GraphQL::new(query, variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
