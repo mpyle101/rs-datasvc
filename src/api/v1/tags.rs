@@ -76,7 +76,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<TagEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
+    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(&id));
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -93,42 +93,28 @@ async fn by_query(
     req: Request<Body>
 ) -> Json<schemas::Tags>
 {
+    let tmp: String;
     let params = QueryParams::from(&req);
     let (query, variables) = if let Some(query) = params.name {
         (
             &*QUERY_BY_QUERY,
             Variables::AutoCompleteInput(
-                AutoCompleteInput::new(
-                    "TAG",
-                    query,
-                    params.limit
-                )
+                AutoCompleteInput::new("TAG", query, params.limit)
             )
         )
     } else if let Some(query) = params.query {
+        tmp = format!("*{query}*");
         (
             &*QUERY_BY_NAME,
             Variables::SearchInput(
-                SearchInput::new(
-                    "TAG".into(),
-                    format!("*{query}*"),
-                    params.start,
-                    params.limit,
-                    None
-                )
+                SearchInput::new("TAG", &tmp, params.start, params.limit, None)
             )
         )
     } else {
         (
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
-                SearchInput::new(
-                    "TAG".into(),
-                    "*".into(),
-                    params.start,
-                    params.limit,
-                    None
-                )
+                SearchInput::new("TAG", "*", params.start, params.limit, None)
             )
         )
     };
@@ -154,11 +140,8 @@ async fn datasets_by_tag(
     let params = QueryParams::from(&req);
     let variables = Variables::SearchInput(
         SearchInput::new(
-            "DATASET".into(),
-            "*".into(),
-            params.start,
-            params.limit,
-            Some(Filter::new("tags".into(), id))
+            "DATASET", "*", params.start, params.limit,
+            Some(Filter::new("tags", &id))
         )
     );
 

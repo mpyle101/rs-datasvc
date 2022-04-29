@@ -93,7 +93,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<DatasetEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
+    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(&id));
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -110,55 +110,36 @@ async fn by_query(
     req: Request<Body>
 ) -> Json<schemas::Datasets>
 {
+    let tmp: String;
     let params = QueryParams::from(&req);
     let (query, variables) = if let Some(query) = params.name {
         (
             &*QUERY_BY_NAME,
             Variables::AutoCompleteInput(
-                AutoCompleteInput::new(
-                    "DATASET".into(),
-                    query,
-                    params.limit
-                )
+                AutoCompleteInput::new("DATASET", query, params.limit)
             )
         )
     } else if let Some(query) = params.query {
+        tmp = format!("*{query}*");
         (
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
-                SearchInput::new(
-                    "DATASET".into(),
-                    format!("*{query}*"),
-                    params.start,
-                    params.limit,
-                    None
-                )
+                SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
             )
         )
     } else if let Some(query) = params.tags {
+        tmp = format!("tags:{query}");
         (
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
-                SearchInput::new(
-                    "DATASET".into(),
-                    format!("tags:{query}"),
-                    params.start,
-                    params.limit,
-                    None
-                )
+                SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
             )
         )
     } else {
         (
             &*QUERY_BY_QUERY,
             Variables::SearchInput(
-                SearchInput::new(
-                    "DATASET".into(),
-                    "*".into(),
-                    params.start,
-                    params.limit,
-                    None
-                )
+                SearchInput::new("DATASET", "*", params.start, params.limit, None)
             )
         )
     };
@@ -182,7 +163,7 @@ async fn add_tag(
 ) -> StatusCode
 {
     let variables = Variables::TagAssociationInput(
-        TagAssociationInput::new(id, payload.tag)
+        TagAssociationInput::new(&id, &payload.tag)
     );
     let body = GraphQL::new(&*ADD_TAG, variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
@@ -217,7 +198,7 @@ async fn remove_tag(
 ) -> StatusCode
 {
     let variables = Variables::TagAssociationInput(
-        TagAssociationInput::new(id, tag_id)
+        TagAssociationInput::new(&id, &tag_id)
     );
     let body = GraphQL::new(&*REMOVE_TAG, variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)

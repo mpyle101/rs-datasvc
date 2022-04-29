@@ -9,19 +9,19 @@ pub struct GraphQL<'a> {
 #[derive(Serialize)]
 pub enum Variables<'a> {
     #[serde(rename = "urn")]
-    Urn(String),
+    Urn(&'a str),
 
     #[serde(rename = "input")]
-    SearchInput(SearchInput),
+    SearchInput(SearchInput<'a>),
 
     #[serde(rename = "input")]
     AutoCompleteInput(AutoCompleteInput<'a>),
 
     #[serde(rename = "input")]
-    TagAssociationInput(TagAssociationInput),
+    TagAssociationInput(TagAssociationInput<'a>),
 
     #[serde(rename = "input")]
-    ListRecommendationsInput(ListRecommendationsInput),
+    ListRecommendationsInput(ListRecommendationsInput<'a>),
 }
 
 #[derive(Serialize)]
@@ -34,47 +34,47 @@ pub struct AutoCompleteInput<'a> {
 }
 
 #[derive(Serialize)]
-pub struct SearchInput {
+pub struct SearchInput<'a> {
     start: i32,
     count: i32,
-    query: String,
+    query: &'a str,
 
     #[serde(rename = "type")]
-    class: String,
+    class: &'a str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    filters: Option<Filter>,
+    filters: Option<Filter<'a>>,
 }
 
 #[derive(Serialize)]
-pub struct Filter {
-    field: String,
-    value: String,
+pub struct Filter<'a> {
+    field: &'a str,
+    value: &'a str,
 }
 
 #[derive(Serialize)]
-pub struct TagAssociationInput {
+pub struct TagAssociationInput<'a> {
     #[serde(rename(serialize = "tagUrn"))]
-    tag: String,
+    tag: &'a str,
 
     #[serde(rename(serialize = "resourceUrn"))]
-    resource: String
+    resource: &'a str
 }
 
 #[derive(Serialize)]
-pub struct ListRecommendationsInput {
+pub struct ListRecommendationsInput<'a> {
     limit: i32,
 
     #[serde(rename(serialize = "userUrn"))]
-    user: String,
+    user: &'a str,
 
     #[serde(rename(serialize = "requestContext"))]
-    context: RequestContext,
+    context: RequestContext<'a>,
 }
 
 #[derive(Serialize)]
-struct RequestContext {
-    scenario: String,
+struct RequestContext<'a> {
+    scenario: &'a str,
 }
 
 impl<'a> GraphQL<'a> {
@@ -100,35 +100,35 @@ impl<'a> AutoCompleteInput<'a> {
     }
 }
 
-impl SearchInput {
+impl<'a> SearchInput<'a> {
     pub fn new(
-        class: String,
-        query: String,
+        class: &'a str,
+        query: &'a str,
         start: i32,
         count: i32,
-        filters: Option<Filter>
-    ) -> SearchInput
+        filters: Option<Filter<'a>>
+    ) -> SearchInput<'a>
     {
         SearchInput { class, query, start, count, filters }
     }
 }
 
-impl Filter {
-    pub fn new(field: String, value: String) -> Filter
+impl<'a> Filter<'a> {
+    pub fn new(field: &'a str, value: &'a str) -> Filter<'a>
     {
         Filter { field, value }
     }
 }
 
-impl TagAssociationInput {
-    pub fn new(resource: String, tag: String) -> TagAssociationInput
+impl<'a> TagAssociationInput<'a> {
+    pub fn new(resource: &'a str, tag: &'a str) -> TagAssociationInput<'a>
     {
         TagAssociationInput { tag, resource }
     }
 }
 
-impl ListRecommendationsInput {
-    pub fn new(user: String, limit: i32) -> ListRecommendationsInput
+impl<'a> ListRecommendationsInput<'a> {
+    pub fn new(user: &'a str, limit: i32) -> ListRecommendationsInput<'a>
     {
         ListRecommendationsInput {
             user,
