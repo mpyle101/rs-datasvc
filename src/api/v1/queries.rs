@@ -3,7 +3,7 @@ pub fn by_id(entity: &str, values: &str) -> String
 {
     format!(r#"
         query by_id($urn: String!) {{
-            {entity}(urn: $urn) {{ {values} }}
+            entity: {entity}(urn: $urn) {{ {values} }}
         }}
     "#).replace("\n", "").replace("  ", " ")
 }

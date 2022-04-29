@@ -74,8 +74,9 @@ static QUERY_BY_QUERY: Lazy<String>  = Lazy::new(|| queries::by_query(QUERY_VALU
 type Client = hyper::client::Client<HttpConnector, Body>;
 
 #[derive(Deserialize)]
-struct DatasetResponse {
-    data: schemas::datahub::DatasetEntity,
+struct DatasetResponse<'a> {
+    #[serde(borrow)]
+    data: schemas::datahub::DatasetEntity<'a>,
 }
 
 pub fn routes() -> Router

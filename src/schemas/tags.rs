@@ -28,7 +28,7 @@ impl Tag {
     }
 }
 
-impl From<&datahub::Entity> for TagEnvelope {
+impl<'a> From<&'a datahub::Entity<'a>> for TagEnvelope {
     fn from(e: &datahub::Entity) -> Self
     {
         match e {
@@ -45,7 +45,7 @@ impl From<&datahub::TagEntity> for TagEnvelope {
     fn from(e: &datahub::TagEntity) -> Self
     {
         TagEnvelope { 
-            tag: e.tag.as_ref().map(Tag::from)
+            tag: e.entity.as_ref().map(Tag::from)
         }
     }
 }
@@ -72,7 +72,7 @@ impl From<&datahub::Tag> for Tag {
     }
 }
 
-impl From<&datahub::QueryResponse> for Tags {
+impl<'a> From<&datahub::QueryResponse<'a>> for Tags {
     fn from(resp: &datahub::QueryResponse) -> Self
     {
         let (data, paging) = resp.process::<TagEnvelope>();

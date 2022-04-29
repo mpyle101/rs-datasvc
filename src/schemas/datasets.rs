@@ -47,7 +47,7 @@ struct Field {
     native: String,
 }
 
-impl From<&datahub::DatasetField> for Field {
+impl<'a> From<&datahub::DatasetField<'a>> for Field {
     fn from(field: &datahub::DatasetField) -> Self
     {
         Field {
@@ -58,7 +58,7 @@ impl From<&datahub::DatasetField> for Field {
     }
 }
 
-impl From<&datahub::Entity> for DatasetEnvelope {
+impl<'a> From<&datahub::Entity<'a>> for DatasetEnvelope {
     fn from(e: &datahub::Entity) -> Self
     {
         match e {
@@ -71,16 +71,16 @@ impl From<&datahub::Entity> for DatasetEnvelope {
     }
 }
 
-impl From<&datahub::DatasetEntity> for DatasetEnvelope {
+impl<'a> From<&datahub::DatasetEntity<'a>> for DatasetEnvelope {
     fn from(e: &datahub::DatasetEntity) -> Self
     {
         DatasetEnvelope { 
-            dataset: e.dataset.as_ref().map(Dataset::from)
+            dataset: e.entity.as_ref().map(Dataset::from)
         }
     }
 }
 
-impl From<&datahub::Dataset> for DatasetEnvelope {
+impl<'a> From<&datahub::Dataset<'a>> for DatasetEnvelope {
     fn from(ds: &datahub::Dataset) -> Self
     {
         DatasetEnvelope { 
@@ -89,7 +89,7 @@ impl From<&datahub::Dataset> for DatasetEnvelope {
     }
 }
 
-impl From<&datahub::Dataset> for Dataset {
+impl<'a> From<&datahub::Dataset<'a>> for Dataset {
     fn from(e: &datahub::Dataset) -> Self
     {
         Dataset {
@@ -121,7 +121,7 @@ impl From<&datahub::Dataset> for Dataset {
     }
 }
 
-impl From<&datahub::QueryResponse> for Datasets {
+impl<'a> From<&datahub::QueryResponse<'a>> for Datasets {
     fn from(resp: &datahub::QueryResponse) -> Self
     {
         let (data, paging) = resp.process::<DatasetEnvelope>();

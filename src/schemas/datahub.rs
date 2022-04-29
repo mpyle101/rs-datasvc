@@ -11,7 +11,7 @@ pub struct Tags {
 
 #[derive(Deserialize)]
 pub struct TagEntity {
-    pub tag: Option<Tag>,
+    pub entity: Option<Tag>,
 }
 
 #[derive(Deserialize)]
@@ -27,110 +27,120 @@ pub struct TagProperties {
 }
 
 #[derive(Deserialize)]
-pub struct DatasetEntity {
-    pub dataset: Option<Dataset>,
+pub struct DatasetEntity<'a> {
+    #[serde(borrow)]
+    pub entity: Option<Dataset<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct Dataset {
-    pub urn: String,
-    pub name: String,
+pub struct Dataset<'a> {
+    pub urn: &'a str,
+    pub name: &'a str,
     pub tags: Option<Tags>,
-    pub schema: Option<DatasetSchema>,
-    pub platform: Option<DatasetPlatform>,
-    pub sub_types: Option<DatasetSubType>,
-    pub properties: Option<DatasetProperties>,
+    pub schema: Option<DatasetSchema<'a>>,
+    pub platform: Option<DatasetPlatform<'a>>,
+    pub sub_types: Option<DatasetSubType<'a>>,
+    pub properties: Option<DatasetProperties<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct DatasetSchema {
-    pub fields: Vec<DatasetField>,
+pub struct DatasetSchema<'a> {
+    #[serde(borrow)]
+    pub fields: Vec<DatasetField<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct DatasetPlatform {
-    pub name: String,
-    pub properties: DatasetPlatformProperties,
+pub struct DatasetPlatform<'a> {
+    pub name: &'a str,
+    pub properties: DatasetPlatformProperties<'a>,
 }
 
 #[derive(Deserialize)]
-pub struct DatasetPlatformProperties {
-    pub name: String,
-    pub class: String,
+pub struct DatasetPlatformProperties<'a> {
+    pub name: &'a str,
+    pub class: &'a str,
 }
 
 #[derive(Deserialize)]
-pub struct DatasetField {
-    pub path: String,
-    pub class: String,
-    pub native: String,
+pub struct DatasetField<'a> {
+    pub path: &'a str,
+    pub class: &'a str,
+    pub native: &'a str,
 }
 
 #[derive(Deserialize)]
-pub struct DatasetSubType {
-    pub names: Vec<String>
+pub struct DatasetSubType<'a> {
+    #[serde(borrow)]
+    pub names: Vec<&'a str>
 }
 
 #[derive(Deserialize)]
-pub struct DatasetProperties {
-    pub name: String,
-    pub origin: String,
+pub struct DatasetProperties<'a> {
+    pub name: &'a str,
+    pub origin: &'a str,
 }
 
 #[derive(Deserialize)]
-pub struct ErrorMessage {
-    pub message: String
+pub struct ErrorMessage<'a> {
+    pub message: &'a str
 }
 
 
 #[derive(Deserialize)]
-pub struct QueryResponse {
-    data: QueryResponseData
+pub struct QueryResponse<'a> {
+    #[serde(borrow)]
+    data: QueryResponseData<'a>
 }
 
 #[derive(Deserialize)]
-struct QueryResponseData {
-    results: QueryResults
+struct QueryResponseData<'a> {
+    #[serde(borrow)]
+    results: QueryResults<'a>
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "__typename")]
-enum QueryResults {
+enum QueryResults<'a> {
     AutoCompleteResults { 
-        entities: Vec<Entity>
+        entities: Vec<Entity<'a>>
     },
     SearchResults {
         start: i32,
         count: i32,
         total: i32,
-        entities: Vec<EntityEnvelope>
+
+        #[serde(borrow)]
+        entities: Vec<EntityEnvelope<'a>>
     },
 }
 
 #[derive(Deserialize)]
-struct EntityEnvelope {
-    entity: Entity,
+struct EntityEnvelope<'a> {
+    #[serde(borrow)]
+    entity: Entity<'a>,
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "__typename")]
-pub enum Entity {
+pub enum Entity<'a> {
     Tag(Tag),
-    Dataset(Dataset),
+
+    #[serde(borrow)]
+    Dataset(Dataset<'a>),
 }
 
-impl QueryResponse {
-    pub fn process<'a, T>(&'a self) -> (Vec<T>, Option<Paging>)
-        where T: From<&'a Entity>
+impl<'a> QueryResponse<'a> {
+    pub fn process<T>(&'a self) -> (Vec<T>, Option<Paging>)
+        where T: From<&'a Entity<'a>>
     {
         (
-            self.data.results.process::<'a, T>(),
+            self.data.results.process::<T>(),
             self.data.results.paging()
         )
     }
 }
 
-impl QueryResults {
+impl<'a> QueryResults<'a> {
     fn paging(&self) -> Option<Paging> {
         match self {
             Self::AutoCompleteResults { .. } => None,
@@ -140,8 +150,8 @@ impl QueryResults {
         }
     }
 
-    fn process<'a, T>(&'a self) -> Vec<T>
-        where T: From<&'a Entity>
+    fn process<T>(&'a self) -> Vec<T>
+        where T: From<&'a Entity<'a>>
     {
         match self {
             Self::AutoCompleteResults { entities } => {
@@ -161,9 +171,11 @@ impl QueryResults {
 
 
 #[derive(Deserialize)]
-pub struct DatasetAddTagResponse {
+pub struct DatasetAddTagResponse<'a> {
     pub data: Option<DatasetAddTagResult>,
-    pub errors: Option<Vec<ErrorMessage>>,
+
+    #[serde(borrow)]
+    pub errors: Option<Vec<ErrorMessage<'a>>>,
 }
 
 #[derive(Deserialize)]
@@ -283,25 +295,29 @@ enum Aspect {
 
 
 #[derive(Deserialize)]
-pub struct ListRecommendationsResponse {
-    data: RecommendationsResponseData
+pub struct ListRecommendationsResponse<'a> {
+    #[serde(borrow)]
+    data: RecommendationsResponseData<'a>
 }
 
 #[derive(Deserialize)]
-struct RecommendationsResponseData {
-    results: RecommendationsModules
+struct RecommendationsResponseData<'a> {
+    #[serde(borrow)]
+    results: RecommendationsModules<'a>
 }
 
 #[derive(Deserialize)]
-struct RecommendationsModules {
-    modules: Vec<RecommendationsModule>,
+struct RecommendationsModules<'a> {
+    #[serde(borrow)]
+    modules: Vec<RecommendationsModule<'a>>,
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "id")]
-enum RecommendationsModule {
+enum RecommendationsModule<'a> {
     Platforms { 
-        content: Vec<PlatformEntity>
+        #[serde(borrow)]
+        content: Vec<PlatformEntity<'a>>
     },
     RecentlyViewedEntities,
     HighUsageEntities,
@@ -309,25 +325,25 @@ enum RecommendationsModule {
 }
 
 #[derive(Deserialize)]
-pub struct PlatformEntity {
-    #[serde(rename(deserialize = "dataPlatform"))]
-    pub platform: DataPlatform,
+pub struct PlatformEntity<'a> {
+    #[serde(borrow)]
+    pub entity: DataPlatform<'a>,
 }
 
 #[derive(Deserialize)]
-pub struct DataPlatform {
-    pub urn: String,
-    pub name: String,
-    pub properties: PlatformProperties
+pub struct DataPlatform<'a> {
+    pub urn: &'a str,
+    pub name: &'a str,
+    pub properties: PlatformProperties<'a>
 }
 
 #[derive(Deserialize)]
-pub struct PlatformProperties {
-    pub name: String,
-    pub class: String,
+pub struct PlatformProperties<'a> {
+    pub name: &'a str,
+    pub class: &'a str,
 }
 
-impl ListRecommendationsResponse {
+impl<'a> ListRecommendationsResponse<'a> {
     pub fn process(&self) -> (Vec<PlatformEnvelope>, Option<Paging>)
     {
         (
@@ -339,7 +355,7 @@ impl ListRecommendationsResponse {
     }
 }
 
-impl RecommendationsModule {
+impl<'a> RecommendationsModule<'a> {
     fn process(&self) -> Vec<PlatformEnvelope>
     {
         match self {

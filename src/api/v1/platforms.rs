@@ -48,8 +48,9 @@ type Client = hyper::client::Client<HttpConnector, Body>;
 
 
 #[derive(Deserialize)]
-struct PlatformResponse {
-    data: schemas::datahub::PlatformEntity,
+struct PlatformResponse<'a> {
+    #[serde(borrow)]
+    data: schemas::datahub::PlatformEntity<'a>,
 }
 
 pub fn routes() -> Router

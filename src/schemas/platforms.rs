@@ -24,26 +24,26 @@ pub struct Platform {
     pub class: String,
 }
 
-impl From<&datahub::PlatformEntity> for PlatformEnvelope {
+impl<'a> From<&datahub::PlatformEntity<'a>> for PlatformEnvelope {
     fn from(e: &datahub::PlatformEntity) -> Self
     {
         PlatformEnvelope { platform: Platform::from(e) }
     }
 }
 
-impl From<&datahub::PlatformEntity> for Platform {
+impl<'a> From<&datahub::PlatformEntity<'a>> for Platform {
     fn from(e: &datahub::PlatformEntity) -> Self
     {
         Platform {
-            id: e.platform.urn.to_owned(),
-            name: e.platform.name.to_owned(),
-            title: e.platform.properties.name.to_owned(),
-            class: e.platform.properties.class.to_owned(),
+            id: e.entity.urn.to_owned(),
+            name: e.entity.name.to_owned(),
+            title: e.entity.properties.name.to_owned(),
+            class: e.entity.properties.class.to_owned(),
         }
     }
 }
 
-impl From<&datahub::ListRecommendationsResponse> for Platforms {
+impl<'a> From<&datahub::ListRecommendationsResponse<'a>> for Platforms {
     fn from(resp: &datahub::ListRecommendationsResponse) -> Self
     {
         let (data, paging) = resp.process();
