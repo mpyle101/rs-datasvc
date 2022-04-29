@@ -76,7 +76,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<TagEnvelope>
 {
-    let body = GraphQL::new(QUERY_BY_ID.to_owned(), Variables::Urn(id));
+    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -96,18 +96,18 @@ async fn by_query(
     let params = QueryParams::from(&req);
     let (query, variables) = if let Some(query) = params.name {
         (
-            QUERY_BY_QUERY.to_owned(),
+            &*QUERY_BY_QUERY,
             Variables::AutoCompleteInput(
                 AutoCompleteInput::new(
-                    "TAG".into(),
-                    query.to_string(),
+                    "TAG",
+                    query,
                     params.limit
                 )
             )
         )
     } else if let Some(query) = params.query {
         (
-            QUERY_BY_NAME.to_owned(),
+            &*QUERY_BY_NAME,
             Variables::SearchInput(
                 SearchInput::new(
                     "TAG".into(),
@@ -120,7 +120,7 @@ async fn by_query(
         )
     } else {
         (
-            QUERY_BY_QUERY.to_owned(),
+            &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new(
                     "TAG".into(),
@@ -162,7 +162,7 @@ async fn datasets_by_tag(
         )
     );
 
-    let body = GraphQL::new(DATASETS_BY_TAG.to_owned(), variables);
+    let body = GraphQL::new(&*DATASETS_BY_TAG, variables);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

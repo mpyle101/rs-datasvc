@@ -93,7 +93,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<DatasetEnvelope>
 {
-    let body = GraphQL::new(QUERY_BY_ID.to_owned(), Variables::Urn(id));
+    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(id));
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -113,18 +113,18 @@ async fn by_query(
     let params = QueryParams::from(&req);
     let (query, variables) = if let Some(query) = params.name {
         (
-            QUERY_BY_NAME.to_owned(),
+            &*QUERY_BY_NAME,
             Variables::AutoCompleteInput(
                 AutoCompleteInput::new(
                     "DATASET".into(),
-                    query.to_owned(),
+                    query,
                     params.limit
                 )
             )
         )
     } else if let Some(query) = params.query {
         (
-            QUERY_BY_QUERY.to_owned(),
+            &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new(
                     "DATASET".into(),
@@ -137,7 +137,7 @@ async fn by_query(
         )
     } else if let Some(query) = params.tags {
         (
-            QUERY_BY_QUERY.to_owned(),
+            &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new(
                     "DATASET".into(),
@@ -150,7 +150,7 @@ async fn by_query(
         )
     } else {
         (
-            QUERY_BY_QUERY.to_owned(),
+            &*QUERY_BY_QUERY,
             Variables::SearchInput(
                 SearchInput::new(
                     "DATASET".into(),
@@ -184,7 +184,7 @@ async fn add_tag(
     let variables = Variables::TagAssociationInput(
         TagAssociationInput::new(id, payload.tag)
     );
-    let body = GraphQL::new(ADD_TAG.to_owned(), variables);
+    let body = GraphQL::new(&*ADD_TAG, variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -219,7 +219,7 @@ async fn remove_tag(
     let variables = Variables::TagAssociationInput(
         TagAssociationInput::new(id, tag_id)
     );
-    let body = GraphQL::new(REMOVE_TAG.to_owned(), variables);
+    let body = GraphQL::new(&*REMOVE_TAG, variables);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

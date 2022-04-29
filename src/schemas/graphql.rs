@@ -1,13 +1,13 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct GraphQL {
-    query: String,
-    variables: Variables,
+pub struct GraphQL<'a> {
+    query: &'a str,
+    variables: Variables<'a>,
 }
 
 #[derive(Serialize)]
-pub enum Variables {
+pub enum Variables<'a> {
     #[serde(rename = "urn")]
     Urn(String),
 
@@ -15,7 +15,7 @@ pub enum Variables {
     SearchInput(SearchInput),
 
     #[serde(rename = "input")]
-    AutoCompleteInput(AutoCompleteInput),
+    AutoCompleteInput(AutoCompleteInput<'a>),
 
     #[serde(rename = "input")]
     TagAssociationInput(TagAssociationInput),
@@ -25,12 +25,12 @@ pub enum Variables {
 }
 
 #[derive(Serialize)]
-pub struct AutoCompleteInput {
+pub struct AutoCompleteInput<'a> {
     limit: i32,
-    query: String,
+    query: &'a str,
 
     #[serde(rename = "type")]
-    class: String,
+    class: &'a str,
 }
 
 #[derive(Serialize)]
@@ -77,14 +77,14 @@ struct RequestContext {
     scenario: String,
 }
 
-impl GraphQL {
-    pub fn new(query: String, vars: Variables) -> GraphQL
+impl<'a> GraphQL<'a> {
+    pub fn new(query: &'a str, vars: Variables<'a>) -> GraphQL<'a>
     {
         GraphQL { query, variables: vars }
     }
 }
 
-impl std::fmt::Display for GraphQL {
+impl<'a> std::fmt::Display for GraphQL<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match serde_json::to_string(self) {
             Ok(s)   => write!(f, "{s}"),
@@ -93,8 +93,8 @@ impl std::fmt::Display for GraphQL {
     }
 }
 
-impl AutoCompleteInput {
-    pub fn new(class: String, query: String, limit: i32) -> AutoCompleteInput
+impl<'a> AutoCompleteInput<'a> {
+    pub fn new(class: &'a str, query: &'a str, limit: i32) -> AutoCompleteInput<'a>
     {
         AutoCompleteInput { class, query, limit }
     }
