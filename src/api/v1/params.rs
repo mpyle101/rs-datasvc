@@ -25,9 +25,9 @@ impl<'a> From<&'a Request<Body>> for QueryParams<'a> {
         QueryParams {
             limit,
             start,
-            name: params.get("name").map(|s| *s),
-            tags: params.get("tags").map(|s| *s),
-            query: params.get("query").map(|s| *s),
+            name: params.get("name").copied(),
+            tags: params.get("tags").copied(),
+            query: params.get("query").copied(),
         }
     }
 }

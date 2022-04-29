@@ -41,7 +41,7 @@ impl<'a> From<&'a datahub::Entity<'a>> for TagEnvelope {
     }
 }
 
-impl From<&datahub::TagEntity> for TagEnvelope {
+impl<'a> From<&datahub::TagEntity<'a>> for TagEnvelope {
     fn from(e: &datahub::TagEntity) -> Self
     {
         TagEnvelope { 
@@ -50,7 +50,7 @@ impl From<&datahub::TagEntity> for TagEnvelope {
     }
 }
 
-impl From<&datahub::Tag> for TagEnvelope {
+impl<'a> From<&datahub::Tag<'a>> for TagEnvelope {
     fn from(tag: &datahub::Tag) -> Self
     {
         TagEnvelope { 
@@ -59,7 +59,7 @@ impl From<&datahub::Tag> for TagEnvelope {
     }
 }
 
-impl From<&datahub::Tag> for Tag {
+impl<'a> From<&datahub::Tag<'a>> for Tag {
     fn from(tag: &datahub::Tag) -> Self
     {
         Tag {

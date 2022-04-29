@@ -5,25 +5,27 @@ use crate::schemas::Paging;
 use crate::schemas::{PlatformEnvelope};
 
 #[derive(Deserialize)]
-pub struct Tags {
-    pub tags: Vec<TagEntity>,
+pub struct Tags<'a> {
+    #[serde(borrow)]
+    pub tags: Vec<TagEntity<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct TagEntity {
-    pub entity: Option<Tag>,
+pub struct TagEntity<'a> {
+    #[serde(borrow)]
+    pub entity: Option<Tag<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct Tag {
-    pub urn: String,
-    pub properties: Option<TagProperties>,
+pub struct Tag<'a> {
+    pub urn: &'a str,
+    pub properties: Option<TagProperties<'a>>,
 }
 
 #[derive(Deserialize)]
-pub struct TagProperties {
-    pub name: String,
-    pub description: String,
+pub struct TagProperties<'a> {
+    pub name: &'a str,
+    pub description: &'a str,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +38,7 @@ pub struct DatasetEntity<'a> {
 pub struct Dataset<'a> {
     pub urn: &'a str,
     pub name: &'a str,
-    pub tags: Option<Tags>,
+    pub tags: Option<Tags<'a>>,
     pub schema: Option<DatasetSchema<'a>>,
     pub platform: Option<DatasetPlatform<'a>>,
     pub sub_types: Option<DatasetSubType<'a>>,
@@ -123,7 +125,7 @@ struct EntityEnvelope<'a> {
 #[derive(Deserialize)]
 #[serde(tag = "__typename")]
 pub enum Entity<'a> {
-    Tag(Tag),
+    Tag(Tag<'a>),
 
     #[serde(borrow)]
     Dataset(Dataset<'a>),
@@ -185,18 +187,18 @@ pub struct DatasetAddTagResult {
 
 
 #[derive(Serialize)]
-pub struct CreateTag {
-    entity: Value,
+pub struct CreateTag<'a> {
+    entity: Value<'a>,
 }
 
-impl CreateTag {
-    pub fn new(name: String, description: String) -> CreateTag
+impl<'a> CreateTag<'a> {
+    pub fn new(urn: &'a str, name: &'a str, description: &'a str) -> CreateTag<'a>
     {
         CreateTag {
             entity: Value { 
                 value: Snapshot { 
                     snapshot: SnapshotValues {
-                        urn: format!("urn:li:tag:{name}"),
+                        urn,
                         aspects: vec![
                             Aspect::Properties {
                                 name,
@@ -210,7 +212,7 @@ impl CreateTag {
     }
 }
 
-impl fmt::Display for CreateTag {
+impl<'a> fmt::Display for CreateTag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match serde_json::to_string(self) {
             Ok(s)   => write!(f, "{s}"),
@@ -220,12 +222,12 @@ impl fmt::Display for CreateTag {
 }
 
 #[derive(Serialize)]
-pub struct DeleteTag {
-    entity: Value,
+pub struct DeleteTag<'a> {
+    entity: Value<'a>,
 }
 
-impl DeleteTag {
-    pub fn new(urn: String) -> DeleteTag
+impl<'a> DeleteTag<'a> {
+    pub fn new(urn: &str) -> DeleteTag
     {
         DeleteTag {
             entity: Value { 
@@ -244,7 +246,7 @@ impl DeleteTag {
     }
 }
 
-impl fmt::Display for DeleteTag {
+impl<'a> fmt::Display for DeleteTag<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match serde_json::to_string(self) {
             Ok(s)   => write!(f, "{s}"),
@@ -254,42 +256,31 @@ impl fmt::Display for DeleteTag {
 }
 
 #[derive(Serialize)]
-struct Value {
-    value: Snapshot,
+struct Value<'a> {
+    value: Snapshot<'a>,
 }
 
 #[derive(Serialize)]
-struct Snapshot {
+struct Snapshot<'a> {
     #[serde(rename(serialize = "com.linkedin.metadata.snapshot.TagSnapshot"))]
-    snapshot: SnapshotValues,
+    snapshot: SnapshotValues<'a>,
 }
 
 #[derive(Serialize)]
-struct SnapshotValues {
-    urn: String,
-    aspects: Vec<Aspect>,
+struct SnapshotValues<'a> {
+    urn: &'a str,
+    aspects: Vec<Aspect<'a>>,
 }
 
 #[derive(Serialize)]
-struct Status {
-    removed: bool,
-}
-
-#[derive(Serialize)]
-struct Properties {
-    name: String,
-    description: String,
-}
-
-#[derive(Serialize)]
-enum Aspect {
+enum Aspect<'a> {
     #[serde(rename(serialize = "com.linkedin.common.Status"))]
     Status { removed: bool },
     
     #[serde(rename(serialize = "com.linkedin.tag.TagProperties"))]
     Properties {
-        name: String,
-        description: String
+        name: &'a str,
+        description: &'a str
     }
 }
 

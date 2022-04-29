@@ -52,8 +52,9 @@ static DATASETS_BY_TAG: Lazy<String> = Lazy::new(|| queries::by_query(DATASET_VA
 type Client = hyper::client::Client<HttpConnector, Body>;
 
 #[derive(Deserialize)]
-struct TagResponse {
-    data: schemas::datahub::TagEntity,
+struct TagResponse<'a> {
+    #[serde(borrow)]
+    data: schemas::datahub::TagEntity<'a>,
 }
 
 pub fn routes() -> Router
@@ -178,8 +179,10 @@ async fn create_tag(
     Json(payload): Json<requests::CreateTag>
 ) -> impl IntoResponse
 {
-    let desc = payload.description.unwrap_or_else(|| "".to_string());
-    let body = CreateTag::new(payload.name.clone(), desc.clone());
+    let name = payload.name;
+    let urn  = format!("urn:li:tag:{name}");
+    let desc = payload.description.as_ref().map_or_else(|| "", |s| s);
+    let body = CreateTag::new(&urn, &name, desc);
     let resp = post(&client, INGEST_ENDPOINT, body)
         .await
         .unwrap();
@@ -190,10 +193,7 @@ async fn create_tag(
         StatusCode::INTERNAL_SERVER_ERROR
     };
 
-    let name = payload.name;
-    let urn = format!("urn:li:tag:{name}");
-
-    (status, Json(schemas::Tag::new(urn, Some(name), Some(desc))))
+    (status, Json(schemas::Tag::new(urn, Some(name), Some(desc.to_string()))))
 }
 
 async fn delete_tag(
@@ -201,7 +201,7 @@ async fn delete_tag(
     Extension(client): Extension<Client>,
 ) -> StatusCode
 {
-    let body = DeleteTag::new(id);
+    let body = DeleteTag::new(&id);
     let resp = post(&client, INGEST_ENDPOINT, body)
         .await
         .unwrap();

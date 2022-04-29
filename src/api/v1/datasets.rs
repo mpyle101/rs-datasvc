@@ -65,8 +65,8 @@ pub const QUERY_VALUES: &str = "
     }
 ";
 
-static ADD_TAG: Lazy<String>         = Lazy::new(|| queries::add_tag());
-static REMOVE_TAG: Lazy<String>      = Lazy::new(|| queries::remove_tag());
+static ADD_TAG: Lazy<String>         = Lazy::new(queries::add_tag);
+static REMOVE_TAG: Lazy<String>      = Lazy::new(queries::remove_tag);
 static QUERY_BY_ID: Lazy<String>     = Lazy::new(|| queries::by_id("dataset", QUERY_VALUES));
 static QUERY_BY_NAME: Lazy<String>   = Lazy::new(|| queries::by_name(QUERY_VALUES));
 static QUERY_BY_QUERY: Lazy<String>  = Lazy::new(|| queries::by_query(QUERY_VALUES));
