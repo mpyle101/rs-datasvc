@@ -36,9 +36,12 @@ const QUERY_VALUES: &str = "
     }
 ";
 
-static GET_ALL: Lazy<PlatformsFactory>           = Lazy::new(|| PlatformsFactory::new(QUERY_VALUES));
-static GET_BY_ID: Lazy<GetOneFactory>            = Lazy::new(|| GetOneFactory::new("dataPlatform", QUERY_VALUES));
-static DATASETS_BY_PLATFORM: Lazy<FilterFactory> = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "platform"));
+static GET_ALL: Lazy<PlatformsFactory>
+    = Lazy::new(|| PlatformsFactory::new(QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>
+    = Lazy::new(|| GetOneFactory::new("dataPlatform", QUERY_VALUES));
+static DATASETS_BY_PLATFORM: Lazy<FilterFactory>
+    = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "platform"));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 

@@ -67,14 +67,18 @@ pub const QUERY_VALUES: &str = "
     }
 ";
 
-static ADD_TAG: Lazy<String>         = Lazy::new(queries::add_tag);
-static REMOVE_TAG: Lazy<String>      = Lazy::new(queries::remove_tag);
-
-static GET_ALL: Lazy<GetAllFactory>     = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_ID: Lazy<GetOneFactory>   = Lazy::new(|| GetOneFactory::new("dataset", QUERY_VALUES));
-static GET_BY_NAME: Lazy<NameFactory>   = Lazy::new(|| NameFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_TAGS: Lazy<TagsFactory>   = Lazy::new(|| TagsFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_QUERY: Lazy<QueryFactory> = Lazy::new(|| QueryFactory::new("DATASET", QUERY_VALUES));
+static ADD_TAG: Lazy<String>    = Lazy::new(queries::add_tag);
+static REMOVE_TAG: Lazy<String> = Lazy::new(queries::remove_tag);
+static GET_ALL: Lazy<GetAllFactory>
+    = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>
+    = Lazy::new(|| GetOneFactory::new("dataset", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>
+    = Lazy::new(|| NameFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_TAGS: Lazy<TagsFactory>
+    = Lazy::new(|| TagsFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory>
+    = Lazy::new(|| QueryFactory::new("DATASET", QUERY_VALUES));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 

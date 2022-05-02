@@ -39,11 +39,16 @@ const QUERY_VALUES: &str = "
     }
 ";
 
-static GET_ALL: Lazy<GetAllFactory>         = Lazy::new(|| GetAllFactory::new("TAG", QUERY_VALUES));
-static GET_BY_ID: Lazy<GetOneFactory>       = Lazy::new(|| GetOneFactory::new("tag", QUERY_VALUES));
-static GET_BY_NAME: Lazy<NameFactory>       = Lazy::new(|| NameFactory::new("TAG", QUERY_VALUES));
-static GET_BY_QUERY: Lazy<QueryFactory>     = Lazy::new(|| QueryFactory::new("TAG", QUERY_VALUES));
-static DATASETS_BY_TAG: Lazy<FilterFactory> = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "tags"));
+static GET_ALL: Lazy<GetAllFactory>
+    = Lazy::new(|| GetAllFactory::new("TAG", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>
+    = Lazy::new(|| GetOneFactory::new("tag", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>
+    = Lazy::new(|| NameFactory::new("TAG", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory>
+    = Lazy::new(|| QueryFactory::new("TAG", QUERY_VALUES));
+static DATASETS_BY_TAG: Lazy<FilterFactory>
+    = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "tags"));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
