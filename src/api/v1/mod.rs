@@ -1,3 +1,4 @@
+mod graphql;
 mod params;
 mod queries;
 

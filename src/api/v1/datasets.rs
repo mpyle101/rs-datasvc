@@ -14,8 +14,6 @@ use crate::schemas::{
     requests,
     GraphQL,
     Variables,
-    AutoCompleteInput,
-    SearchInput,
     TagAssociationInput,
     Datasets,
     DatasetEnvelope,
@@ -23,7 +21,11 @@ use crate::schemas::{
     QueryResponse,
 };
 
-use crate::api::v1::{queries, params::{QueryParams, QueryType}};
+use crate::api::v1::{
+    queries,
+    graphql::{GetAllFactory, GetOneFactory, NameFactory, TagsFactory, QueryFactory},
+    params::{QueryParams, QueryType}
+};
 
 pub const QUERY_VALUES: &str = "
     urn
@@ -67,9 +69,12 @@ pub const QUERY_VALUES: &str = "
 
 static ADD_TAG: Lazy<String>         = Lazy::new(queries::add_tag);
 static REMOVE_TAG: Lazy<String>      = Lazy::new(queries::remove_tag);
-static QUERY_BY_ID: Lazy<String>     = Lazy::new(|| queries::by_id("dataset", QUERY_VALUES));
-static QUERY_BY_NAME: Lazy<String>   = Lazy::new(|| queries::by_name(QUERY_VALUES));
-static QUERY_BY_QUERY: Lazy<String>  = Lazy::new(|| queries::by_query(QUERY_VALUES));
+
+static GET_ALL: Lazy<GetAllFactory>     = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>   = Lazy::new(|| GetOneFactory::new("dataset", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>   = Lazy::new(|| NameFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_TAGS: Lazy<TagsFactory>   = Lazy::new(|| TagsFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory> = Lazy::new(|| QueryFactory::new("DATASET", QUERY_VALUES));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -93,7 +98,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<DatasetEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(&id));
+    let body = GET_BY_ID.body(&id);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -110,39 +115,12 @@ async fn by_query(
     req: Request<Body>
 ) -> Json<schemas::Datasets>
 {
-    let tmp: String;
     let params = QueryParams::from(&req);
     let body = match params.query {
-        QueryType::All => GraphQL::new(
-            &*QUERY_BY_QUERY,
-            Variables::SearchInput(
-                SearchInput::new("DATASET", "*", params.start, params.limit, None)
-            )
-        ),
-        QueryType::Name(name) => GraphQL::new(
-            &*QUERY_BY_NAME,
-            Variables::AutoCompleteInput(
-                AutoCompleteInput::new("DATASET", name, params.limit)
-            )
-        ),
-        QueryType::Tags(tags) => {
-            tmp = format!("tags:{tags}");
-            GraphQL::new(
-                &*QUERY_BY_QUERY,
-                Variables::SearchInput(
-                    SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
-                )
-            )
-        },
-        QueryType::Query(query) => {
-            tmp = format!("*{query}*");
-            GraphQL::new(
-                &*QUERY_BY_QUERY,
-                Variables::SearchInput(
-                    SearchInput::new("DATASET", &tmp, params.start, params.limit, None)
-                )
-            )
-        },
+        QueryType::All          => GET_ALL.body(&params),
+        QueryType::Name(name)   => GET_BY_NAME.body(name, &params),
+        QueryType::Tags(tags)   => GET_BY_TAGS.body(tags, &params),
+        QueryType::Query(query) => GET_BY_QUERY.body(query, &params),
     };
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await

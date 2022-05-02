@@ -37,7 +37,7 @@ pub struct AutoCompleteInput<'a> {
 pub struct SearchInput<'a> {
     start: i32,
     count: i32,
-    query: &'a str,
+    query: String,
 
     #[serde(rename = "type")]
     class: &'a str,
@@ -103,7 +103,7 @@ impl<'a> AutoCompleteInput<'a> {
 impl<'a> SearchInput<'a> {
     pub fn new(
         class: &'a str,
-        query: &'a str,
+        query: String,
         start: i32,
         count: i32,
         filters: Option<Filter<'a>>
@@ -134,7 +134,7 @@ impl<'a> ListRecommendationsInput<'a> {
             user,
             limit,
             context: RequestContext { 
-                scenario: "HOME".into()
+                scenario: "HOME"
             }
         }
     }

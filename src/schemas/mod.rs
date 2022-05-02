@@ -20,6 +20,7 @@ pub use graphql::{
     SearchInput,
     AutoCompleteInput,
     TagAssociationInput,
+    ListRecommendationsInput,
     Filter
 };
 pub use paging::Paging;

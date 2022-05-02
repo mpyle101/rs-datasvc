@@ -13,11 +13,6 @@ use crate::datahub::{post, GRAPHQL_ENDPOINT, INGEST_ENDPOINT};
 use crate::schemas::{
     self,
     requests,
-    GraphQL,
-    Variables,
-    AutoCompleteInput,
-    SearchInput,
-    Filter,
     Datasets,
     Tags,
     TagEnvelope,
@@ -27,7 +22,7 @@ use crate::schemas::{
 };
 
 use crate::api::v1::{
-    queries,
+    graphql::{GetAllFactory, GetOneFactory, FilterFactory, NameFactory, QueryFactory},
     datasets::QUERY_VALUES as DATASET_VALUES,
     params::{QueryParams, QueryType}
 };
@@ -44,10 +39,11 @@ const QUERY_VALUES: &str = "
     }
 ";
 
-static QUERY_BY_ID: Lazy<String>     = Lazy::new(|| queries::by_id("tag", QUERY_VALUES));
-static QUERY_BY_NAME: Lazy<String>   = Lazy::new(|| queries::by_name(QUERY_VALUES));
-static QUERY_BY_QUERY: Lazy<String>  = Lazy::new(|| queries::by_query(QUERY_VALUES));
-static DATASETS_BY_TAG: Lazy<String> = Lazy::new(|| queries::by_query(DATASET_VALUES));
+static GET_ALL: Lazy<GetAllFactory>         = Lazy::new(|| GetAllFactory::new("TAG", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>       = Lazy::new(|| GetOneFactory::new("tag", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>       = Lazy::new(|| NameFactory::new("TAG", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory>     = Lazy::new(|| QueryFactory::new("TAG", QUERY_VALUES));
+static DATASETS_BY_TAG: Lazy<FilterFactory> = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "tags"));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -76,7 +72,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<TagEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(&id));
+    let body = GET_BY_ID.body(&id);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -93,30 +89,11 @@ async fn by_query(
     req: Request<Body>
 ) -> Json<schemas::Tags>
 {
-    let tmp: String;
     let params = QueryParams::from(&req);
     let body = match params.query {
-        QueryType::All => GraphQL::new(
-            &*QUERY_BY_QUERY,
-            Variables::SearchInput(
-                SearchInput::new("TAG", "*", params.start, params.limit, None)
-            )
-        ),
-        QueryType::Name(name) => GraphQL::new(
-            &*QUERY_BY_NAME,
-            Variables::AutoCompleteInput(
-                AutoCompleteInput::new("TAG", name, params.limit)
-            )
-        ),
-        QueryType::Query(query) => {
-            tmp = format!("*{query}*");
-            GraphQL::new(
-                &*QUERY_BY_QUERY,
-                Variables::SearchInput(
-                    SearchInput::new("TAG", &tmp, params.start, params.limit, None)
-                )
-            )
-        },
+        QueryType::All          => GET_ALL.body(&params),
+        QueryType::Name(name)   => GET_BY_NAME.body(name, &params),
+        QueryType::Query(query) => GET_BY_QUERY.body(query, &params),
         QueryType::Tags(..) => panic!("?tags not supported")
     };
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
@@ -137,14 +114,7 @@ async fn datasets_by_tag(
 ) -> Json<schemas::Datasets>
 {
     let params = QueryParams::from(&req);
-    let variables = Variables::SearchInput(
-        SearchInput::new(
-            "DATASET", "*", params.start, params.limit,
-            Some(Filter::new("tags", &id))
-        )
-    );
-
-    let body = GraphQL::new(&*DATASETS_BY_TAG, variables);
+    let body = DATASETS_BY_TAG.body(&id, &params);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

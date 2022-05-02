@@ -8,13 +8,9 @@ use hyper::{client::HttpConnector, Body};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-use crate::{datahub::{post, GRAPHQL_ENDPOINT}, schemas::graphql::ListRecommendationsInput};
+use crate::{datahub::{post, GRAPHQL_ENDPOINT}};
 use crate::schemas::{
     self,
-    GraphQL,
-    Variables,
-    SearchInput,
-    Filter,
     Datasets,
     Platforms,
     PlatformEnvelope,
@@ -23,7 +19,7 @@ use crate::schemas::{
 };
 
 use crate::api::v1::{
-    queries,
+    graphql::{GetOneFactory, FilterFactory, PlatformsFactory},
     datasets::QUERY_VALUES as DATASET_VALUES,
     params::QueryParams
 };
@@ -40,9 +36,9 @@ const QUERY_VALUES: &str = "
     }
 ";
 
-static QUERY_BY_ID: Lazy<String> = Lazy::new(|| queries::by_id("dataPlatform", QUERY_VALUES));
-static ALL_PLATFORMS: Lazy<String> = Lazy::new(|| queries::platforms(QUERY_VALUES));
-static DATASETS_BY_PLATFORM: Lazy<String> = Lazy::new(|| queries::by_query(DATASET_VALUES));
+static GET_ALL: Lazy<PlatformsFactory>           = Lazy::new(|| PlatformsFactory::new(QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>            = Lazy::new(|| GetOneFactory::new("dataPlatform", QUERY_VALUES));
+static DATASETS_BY_PLATFORM: Lazy<FilterFactory> = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "platform"));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 
@@ -66,7 +62,7 @@ async fn by_id(
     Extension(client): Extension<Client>,
 ) -> Json<PlatformEnvelope>
 {
-    let body = GraphQL::new(&*QUERY_BY_ID, Variables::Urn(&id));
+    let body = GET_BY_ID.body(&id);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -84,10 +80,7 @@ async fn by_query(
 ) -> Json<schemas::Platforms>
 {
     let params = QueryParams::from(&req);
-    let variables = Variables::ListRecommendationsInput(
-        ListRecommendationsInput::new("urn:li:corpuser:datahub".into(), params.limit)
-    );
-    let body = GraphQL::new(&*ALL_PLATFORMS, variables);
+    let body = GET_ALL.body(&params);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -106,13 +99,7 @@ async fn datasets_by_platform(
 ) -> Json<schemas::Datasets>
 {
     let params = QueryParams::from(&req);
-    let variables = Variables::SearchInput(
-        SearchInput::new("DATASET", "*", params.start, params.limit,
-            Some(Filter::new("platform".into(), &id))
-        )
-    );
-
-    let body = GraphQL::new(&*DATASETS_BY_PLATFORM, variables);
+    let body = DATASETS_BY_PLATFORM.body(&id, &params);
     let resp = post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
