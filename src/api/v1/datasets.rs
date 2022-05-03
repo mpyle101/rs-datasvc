@@ -12,9 +12,6 @@ use crate::datahub::{self, GRAPHQL_ENDPOINT};
 use crate::schemas::{
     self,
     requests,
-    GraphQL,
-    Variables,
-    TagAssociationInput,
     Datasets,
     DatasetEnvelope,
     DatasetAddTagResponse,
@@ -22,7 +19,6 @@ use crate::schemas::{
 };
 
 use crate::api::v1::{
-    queries,
     graphql::{
         AddTagFactory,
         RemoveTagFactory,
