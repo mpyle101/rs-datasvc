@@ -23,7 +23,15 @@ use crate::schemas::{
 
 use crate::api::v1::{
     queries,
-    graphql::{GetAllFactory, GetOneFactory, NameFactory, TagsFactory, QueryFactory},
+    graphql::{
+        AddTagFactory,
+        RemoveTagFactory,
+        GetAllFactory,
+        GetOneFactory,
+        QueryFactory,
+        NameFactory,
+        TagsFactory,
+    },
     params::{QueryParams, QueryType}
 };
 
@@ -67,8 +75,8 @@ pub const QUERY_VALUES: &str = "
     }
 ";
 
-static ADD_TAG: Lazy<String>    = Lazy::new(queries::add_tag);
-static REMOVE_TAG: Lazy<String> = Lazy::new(queries::remove_tag);
+static ADD_TAG: Lazy<AddTagFactory>       = Lazy::new(|| AddTagFactory::new());
+static REMOVE_TAG: Lazy<RemoveTagFactory> = Lazy::new(|| RemoveTagFactory::new());
 static GET_ALL: Lazy<GetAllFactory>
     = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
 static GET_BY_ID: Lazy<GetOneFactory>
@@ -143,10 +151,7 @@ async fn add_tag(
     Extension(client): Extension<Client>
 ) -> StatusCode
 {
-    let variables = Variables::TagAssociationInput(
-        TagAssociationInput::new(&id, &payload.tag)
-    );
-    let body = GraphQL::new(&*ADD_TAG, variables);
+    let body = ADD_TAG.body(&id, &payload.tag);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();
@@ -178,10 +183,7 @@ async fn remove_tag(
     Extension(client): Extension<Client>
 ) -> StatusCode
 {
-    let variables = Variables::TagAssociationInput(
-        TagAssociationInput::new(&id, &tag_id)
-    );
-    let body = GraphQL::new(&*REMOVE_TAG, variables);
+    let body = REMOVE_TAG.body(&id, &tag_id);
     let resp = datahub::post(&client, GRAPHQL_ENDPOINT, body)
         .await
         .unwrap();

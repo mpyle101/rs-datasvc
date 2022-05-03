@@ -6,6 +6,7 @@ use crate::schemas::{
     Filter,
     SearchInput,
     AutoCompleteInput,
+    TagAssociationInput,
     ListRecommendationsInput
 };
 use crate::api::v1::{queries, params::QueryParams};
@@ -175,6 +176,56 @@ impl<'a> PlatformsFactory<'a> {
             &self.query,
             Variables::ListRecommendationsInput(
                 ListRecommendationsInput::new(&self.user, params.limit)
+            )
+        )
+    }
+}
+
+pub struct AddTagFactory<'a> {
+    query: String,
+    marker: PhantomData<&'a str>
+}
+
+impl<'a> AddTagFactory<'a> {
+    pub fn new() -> AddTagFactory<'a>
+    {
+        AddTagFactory {
+            query: queries::add_tag(),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn body(&'a self, resource: &'a str, tag: &'a str) -> GraphQL<'a>
+    {
+        GraphQL::new(
+            &self.query,
+            Variables::TagAssociationInput(
+                TagAssociationInput::new(resource, tag)
+            )
+        )
+    }
+}
+
+pub struct RemoveTagFactory<'a> {
+    query: String,
+    marker: PhantomData<&'a str>
+}
+
+impl<'a> RemoveTagFactory<'a> {
+    pub fn new() -> RemoveTagFactory<'a>
+    {
+        RemoveTagFactory {
+            query: queries::remove_tag(),
+            marker: PhantomData,
+        }
+    }
+
+    pub fn body(&'a self, resource: &'a str, tag: &'a str) -> GraphQL<'a>
+    {
+        GraphQL::new(
+            &self.query,
+            Variables::TagAssociationInput(
+                TagAssociationInput::new(resource, tag)
             )
         )
     }
