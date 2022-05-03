@@ -8,6 +8,18 @@ use hyper::{client::HttpConnector, Body};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
+use crate::api::v1::{
+    graphql::{
+        AddTagFactory,
+        GetAllFactory,
+        GetOneFactory,
+        QueryFactory,
+        NameFactory,
+        RemoveTagFactory,
+        TagsFactory,
+    },
+    params::{QueryParams, QueryType}
+};
 use crate::datahub::{self, GRAPHQL_ENDPOINT};
 use crate::schemas::{
     self,
@@ -18,18 +30,6 @@ use crate::schemas::{
     QueryResponse,
 };
 
-use crate::api::v1::{
-    graphql::{
-        AddTagFactory,
-        RemoveTagFactory,
-        GetAllFactory,
-        GetOneFactory,
-        QueryFactory,
-        NameFactory,
-        TagsFactory,
-    },
-    params::{QueryParams, QueryType}
-};
 
 pub const QUERY_VALUES: &str = "
     urn
@@ -73,16 +73,11 @@ pub const QUERY_VALUES: &str = "
 
 static ADD_TAG: Lazy<AddTagFactory>       = Lazy::new(|| AddTagFactory::new());
 static REMOVE_TAG: Lazy<RemoveTagFactory> = Lazy::new(|| RemoveTagFactory::new());
-static GET_ALL: Lazy<GetAllFactory>
-    = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_ID: Lazy<GetOneFactory>
-    = Lazy::new(|| GetOneFactory::new("dataset", QUERY_VALUES));
-static GET_BY_NAME: Lazy<NameFactory>
-    = Lazy::new(|| NameFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_TAGS: Lazy<TagsFactory>
-    = Lazy::new(|| TagsFactory::new("DATASET", QUERY_VALUES));
-static GET_BY_QUERY: Lazy<QueryFactory>
-    = Lazy::new(|| QueryFactory::new("DATASET", QUERY_VALUES));
+static GET_ALL: Lazy<GetAllFactory>       = Lazy::new(|| GetAllFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>     = Lazy::new(|| GetOneFactory::new("dataset", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>     = Lazy::new(|| NameFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_TAGS: Lazy<TagsFactory>     = Lazy::new(|| TagsFactory::new("DATASET", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory>   = Lazy::new(|| QueryFactory::new("DATASET", QUERY_VALUES));
 
 type Client = hyper::client::Client<HttpConnector, Body>;
 

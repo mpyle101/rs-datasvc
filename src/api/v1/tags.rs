@@ -9,23 +9,29 @@ use hyper::{client::HttpConnector, Body};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
+use crate::api::v1::{
+    graphql::{
+        FilterFactory,
+        GetAllFactory,
+        GetOneFactory,
+        QueryFactory,
+        NameFactory,
+    },
+    datasets::QUERY_VALUES as DATASET_VALUES,
+    params::{QueryParams, QueryType}
+};
 use crate::datahub::{post, GRAPHQL_ENDPOINT, INGEST_ENDPOINT};
 use crate::schemas::{
     self,
     requests,
-    Datasets,
-    Tags,
-    TagEnvelope,
     CreateTag,
     DeleteTag,
-    QueryResponse
+    Datasets,
+    QueryResponse,
+    Tags,
+    TagEnvelope,
 };
 
-use crate::api::v1::{
-    graphql::{GetAllFactory, GetOneFactory, FilterFactory, NameFactory, QueryFactory},
-    datasets::QUERY_VALUES as DATASET_VALUES,
-    params::{QueryParams, QueryType}
-};
 
 const QUERY_VALUES: &str = "
     urn
@@ -39,14 +45,10 @@ const QUERY_VALUES: &str = "
     }
 ";
 
-static GET_ALL: Lazy<GetAllFactory>
-    = Lazy::new(|| GetAllFactory::new("TAG", QUERY_VALUES));
-static GET_BY_ID: Lazy<GetOneFactory>
-    = Lazy::new(|| GetOneFactory::new("tag", QUERY_VALUES));
-static GET_BY_NAME: Lazy<NameFactory>
-    = Lazy::new(|| NameFactory::new("TAG", QUERY_VALUES));
-static GET_BY_QUERY: Lazy<QueryFactory>
-    = Lazy::new(|| QueryFactory::new("TAG", QUERY_VALUES));
+static GET_ALL: Lazy<GetAllFactory>     = Lazy::new(|| GetAllFactory::new("TAG", QUERY_VALUES));
+static GET_BY_ID: Lazy<GetOneFactory>   = Lazy::new(|| GetOneFactory::new("tag", QUERY_VALUES));
+static GET_BY_NAME: Lazy<NameFactory>   = Lazy::new(|| NameFactory::new("TAG", QUERY_VALUES));
+static GET_BY_QUERY: Lazy<QueryFactory> = Lazy::new(|| QueryFactory::new("TAG", QUERY_VALUES));
 static DATASETS_BY_TAG: Lazy<FilterFactory>
     = Lazy::new(|| FilterFactory::new("DATASETS", DATASET_VALUES, "tags"));
 
